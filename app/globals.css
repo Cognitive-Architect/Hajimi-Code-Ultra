@@ -1,0 +1,155 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Ouroboros 七权人格化主题
+ * ID-61 Phase 5 规范实现
+ */
+
+:root {
+  /* 七权主题色 */
+  --color-soyorin: #884499;
+  --color-soyorin-light: #AA66BB;
+  --color-soyorin-dark: #662277;
+  
+  --color-mike: #7777AA;
+  --color-mike-light: #9999CC;
+  --color-mike-dark: #555588;
+  
+  --color-qa: #66BB66;
+  --color-qa-light: #88DD88;
+  --color-qa-dark: #449944;
+  
+  --color-engineer: #FFDD88;
+  --color-engineer-light: #FFEEAA;
+  --color-engineer-dark: #EEBB66;
+  
+  --color-pm: #884499;
+  --color-pm-light: #AA66BB;
+  --color-pm-dark: #662277;
+  
+  --color-arch: #EE6677;
+  --color-arch-light: #FF88AA;
+  --color-arch-dark: #CC4455;
+  
+  /* 状态色 */
+  --state-idle: #64748B;
+  --state-design: #3B82F6;
+  --state-code: #F97316;
+  --state-audit: #22C55E;
+  --state-build: #A855F7;
+  --state-deploy: #EF4444;
+  --state-done: #10B981;
+  
+  /* 基础色 */
+  --bg-primary: #0F172A;
+  --bg-secondary: #1E293B;
+  --bg-tertiary: #334155;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --border-color: rgba(255, 255, 255, 0.1);
+}
+
+@layer base {
+  body {
+    @apply bg-slate-900 text-white;
+  }
+}
+
+@layer components {
+  /* Agent头像样式 */
+  .agent-avatar {
+    @apply w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300;
+  }
+
+  .agent-avatar:hover {
+    transform: scale(1.1);
+  }
+
+  .agent-avatar.active {
+    animation: breathe 2s ease-in-out infinite;
+  }
+
+  /* 消息气泡 */
+  .message-bubble {
+    @apply rounded-2xl px-4 py-3 max-w-[75%] animate-in slide-in-from-bottom-2;
+  }
+
+  /* 卡片样式 */
+  .ouroboros-card {
+    @apply rounded-2xl border border-white/10 overflow-hidden bg-slate-800 transition-all duration-300;
+  }
+
+  .ouroboros-card:hover {
+    @apply border-purple-500/30;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  /* 按钮样式 */
+  .ouroboros-btn {
+    @apply px-4 py-2 rounded-xl font-medium text-white transition-all duration-200;
+    background: linear-gradient(135deg, #884499, #7777AA);
+  }
+
+  .ouroboros-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(136, 68, 153, 0.4);
+  }
+
+  /* 状态指示器 */
+  .state-indicator {
+    @apply px-4 py-2 rounded-full font-medium text-sm transition-all duration-300;
+  }
+}
+
+@layer utilities {
+  /* 呼吸动画 */
+  @keyframes breathe {
+    0%, 100% { 
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% { 
+      transform: scale(1.05);
+      opacity: 0.8;
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(136, 68, 153, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(136, 68, 153, 0.6);
+    }
+  }
+
+  .animate-breathe {
+    animation: breathe 2s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0F172A;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748B;
+}
