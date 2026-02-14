@@ -76,6 +76,24 @@ export class StateMachine {
 
     const from = this.currentState;
 
+    // 0. 如果已经在目标状态，直接返回成功（幂等性）
+    if (from === to) {
+      return {
+        success: true,
+        from,
+        to,
+        transition: {
+          id: this.generateId(),
+          from,
+          to,
+          timestamp: Date.now(),
+          agent,
+          reason: 'Idempotent transition - already in target state',
+          context,
+        },
+      };
+    }
+
     // 1. 验证流转是否允许
     const validation = this.rulesEngine.validateTransition(from, to, agent);
     if (!validation.valid) {

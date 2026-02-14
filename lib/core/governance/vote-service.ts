@@ -68,6 +68,20 @@ export class VoteService {
     this.initialized = false;
   }
 
+  /**
+   * 测试专用：清空所有提案数据
+   */
+  async clearAllProposalsForTest(): Promise<void> {
+    // 清理所有提案数据
+    for (const id of this.proposals.keys()) {
+      const key = `${PROPOSAL_KEY_PREFIX}${id}`;
+      await tsa.delete(key);
+    }
+    this.proposals.clear();
+    await tsa.set(ACTIVE_PROPOSALS_KEY, [], { tier: 'STAGING' });
+    console.log('[VoteService] 所有提案数据已清理');
+  }
+
   async createProposal(request: CreateProposalRequest, proposer: AgentRole): Promise<Proposal> {
     if (proposer !== 'pm') {
       throw new Error('Only PM can create proposals');
@@ -146,7 +160,13 @@ export class VoteService {
       await this.rejectProposal(proposal);
     }
 
-    return result;
+    // 添加 votedRoles 到返回结果
+    const votedRoles = proposal.votes.map(v => v.voter);
+    return {
+      ...result,
+      votedRoles,
+      pendingRoles: VOTABLE_ROLES.filter(r => !votedRoles.includes(r)),
+    };
   }
 
   private calculateResult(proposal: Proposal): VoteResult {

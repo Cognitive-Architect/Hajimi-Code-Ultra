@@ -34,6 +34,9 @@ describe('B-07 治理链路集成测试', () => {
     // 初始化提案服务（用于提案列表API测试）
     proposalService = new ProposalService();
     await proposalService.init();
+
+    // TEST FIX: 清理之前的提案数据，防止测试间数据污染
+    await voteService.clearAllProposalsForTest();
   });
 
   // 在每个测试后清理
