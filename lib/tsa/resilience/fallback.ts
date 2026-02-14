@@ -646,5 +646,5 @@ export function createFallbackManager(
 }
 
 // ==================== 导出 ====================
-
-export { ILogger, ConsoleLogger, NoOpLogger };
+export { ConsoleLogger, NoOpLogger };
+export type { ILogger };

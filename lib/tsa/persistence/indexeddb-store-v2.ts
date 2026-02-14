@@ -1233,13 +1233,12 @@ export class IndexedDBStoreV2 implements StorageAdapter {
 }
 
 // ==================== 导出 ====================
-
-export { DataPriority, CURRENT_SCHEMA_VERSION };
+// DataPriority 和 IndexedDBStoreV2Config 已在上方定义并导出，此处移除重复
+export { CURRENT_SCHEMA_VERSION };
 export type { 
   ILogger, 
   IndexedDBStoredItem, 
-  LocalStorageBackupConfig,
-  IndexedDBStoreV2Config 
+  LocalStorageBackupConfig
 };
 
 // 默认导出

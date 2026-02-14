@@ -40,24 +40,26 @@ export {
   SplitBrainResolver,
   RepairManager,
   
-  // 类型
-  type RepairConfig,
-  type RepairEvent,
-  type CorruptionReport,
-  type RepairResult,
-  type ConflictReport,
-  type SplitBrainConfig,
-  type ConflictResolutionStrategy,
-  
   // 常量
   DEFAULT_REPAIR_CONFIG,
   DEFAULT_SPLIT_BRAIN_CONFIG,
 } from './repair';
 
+// 类型导出 (符合 isolatedModules)
+export type {
+  RepairConfig,
+  RepairEvent,
+  CorruptionReport,
+  RepairResult,
+  ConflictReport,
+  SplitBrainConfig,
+  ConflictResolutionStrategy,
+} from './repair';
+
 // ==================== 统一配置 ====================
 
 import { FallbackStorageConfig } from './fallback';
-import { RepairConfig, SplitBrainConfig } from './repair';
+import type { RepairConfig, SplitBrainConfig } from './repair';
 
 /**
  * 韧性模块完整配置
@@ -83,7 +85,8 @@ export const DEFAULT_RESILIENCE_CONFIG: ResilienceConfig = {
 // ==================== 韧性控制器 ====================
 
 import { FallbackManager, createFallbackManager, FallbackMemoryStore } from './fallback';
-import { RepairManager, type RepairConfig, type ConflictReport, type RepairResult } from './repair';
+import { RepairManager } from './repair';
+import type { ConflictReport, RepairResult } from './repair';
 import { StorageAdapter } from '../persistence/IndexedDBStore';
 
 interface ILogger {
@@ -406,6 +409,6 @@ export function createResilienceController(
 }
 
 // ==================== 导出类型 ====================
-
-export type { ILogger };
-export type { ResilienceStatus, ResilienceEvent, ResilienceEventHandler };
+// ILogger, ResilienceStatus 等已在上方定义并导出，此处移除重复
+// export type { ILogger };
+// export type { ResilienceStatus, ResilienceEvent, ResilienceEventHandler };

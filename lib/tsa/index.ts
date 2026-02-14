@@ -73,14 +73,17 @@ export interface TSAConfig {
 
 // B-05/09: 导出韧性相关类型
 export { 
+  DEFAULT_FALLBACK_CONFIG,
+};
+export type {
   TierLevel, 
   TierStatus, 
   FallbackEvent, 
-  DEFAULT_FALLBACK_CONFIG,
+  StorageAdapter,
+  StorageSetOptions,
   IndexedDBStore,
   TieredFallback,
 };
-export type { StorageAdapter, StorageSetOptions };
 
 // B-07/09: 类型导出
 

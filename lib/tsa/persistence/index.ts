@@ -21,12 +21,13 @@
  */
 
 // B-04: Redis 存储
-export { RedisStore, StorageAdapter, createRedisStore } from './RedisStore';
-export type { RedisConfig } from './RedisStore';
+export { RedisStore, createRedisStore } from './RedisStore';
+export type { StorageAdapter, RedisConfig } from './RedisStore';
 
 // B-05/09: IndexedDB 存储
-export { IndexedDBStore, DataPriority } from './IndexedDBStore';
+export { IndexedDBStore } from './IndexedDBStore';
 export type { 
+  DataPriority,
   StorageAdapter as IStorageAdapter, 
   SetOptions,
   IndexedDBStoreConfig,
@@ -34,8 +35,9 @@ export type {
 } from './IndexedDBStore';
 
 // B-04/09: IndexedDB 存储 v2 - 修复异步竞态条件
-export { IndexedDBStoreV2, DataPriority as DataPriorityV2 } from './indexeddb-store-v2';
+export { IndexedDBStoreV2 } from './indexeddb-store-v2';
 export type { 
+  DataPriority as DataPriorityV2,
   StorageAdapter as IStorageAdapterV2,
   SetOptions as SetOptionsV2,
   IndexedDBStoreV2Config,
@@ -46,10 +48,10 @@ export type {
 export { 
   TieredFallback, 
   MemoryStore,
-  TierLevel,
   DEFAULT_FALLBACK_CONFIG,
 } from './TieredFallback';
 export type { 
+  TierLevel,
   FallbackConfig, 
   TierStatus, 
   FallbackEvent,

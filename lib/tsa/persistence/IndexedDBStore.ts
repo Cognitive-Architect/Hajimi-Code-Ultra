@@ -568,6 +568,5 @@ export class IndexedDBStore implements StorageAdapter {
 }
 
 // ==================== 导出 ====================
-
-export { DataPriority };
+// DataPriority 已在第48行 export enum 定义并导出，此处移除重复导出
 export type { ILogger, IndexedDBStoredItem };

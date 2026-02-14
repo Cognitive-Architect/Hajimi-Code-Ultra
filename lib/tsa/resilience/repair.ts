@@ -667,6 +667,7 @@ export class RepairManager {
 }
 
 // ==================== 导出 ====================
-
-export { ILogger, ConsoleLogger, NoOpLogger };
-export { BackupManager };
+// BackupManager 已在第128行 export class 定义并导出，此处移除重复导出
+// ILogger 是 interface，使用类型导出
+export { ConsoleLogger, NoOpLogger };
+export type { ILogger };
