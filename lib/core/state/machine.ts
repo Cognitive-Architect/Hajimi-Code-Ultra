@@ -35,6 +35,11 @@ export class StateMachine {
     if (this.initialized) return;
 
     try {
+      // B-02/04 FIX: 先初始化TSA
+      if (!tsa.isInitialized()) {
+        await tsa.init();
+      }
+
       // 从TSA加载当前状态
       const savedState = await tsa.get<PowerState>(STATE_KEY);
       if (savedState) {

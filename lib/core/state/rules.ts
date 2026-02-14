@@ -101,7 +101,7 @@ export class TransitionRulesEngine {
   private loadDefaultRules(): void {
     const defaultTransitions: TransitionRule[] = [
       // IDLE 流转
-      { from: 'IDLE', to: 'DESIGN', allowed: true, requiredRoles: ['pm', 'arch'], description: 'PM或架构师启动设计' },
+      { from: 'IDLE', to: 'DESIGN', allowed: true, requiredRoles: ['pm', 'arch', 'system'], description: 'PM、架构师或系统自动启动设计' },
       
       // DESIGN 流转
       { from: 'DESIGN', to: 'CODE', allowed: true, requiredRoles: ['arch', 'engineer'], description: '设计完成，进入编码' },

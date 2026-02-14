@@ -691,7 +691,7 @@ export class TieredFallback implements StorageAdapter {
       return;
     }
 
-    this.recoverTimer = window.setInterval(() => {
+    this.recoverTimer = setInterval(() => {
       this.attemptRecover().catch(error => {
         this.logger.warn('Recover task error:', error);
       });

@@ -212,10 +212,14 @@ export class VoteService {
       await this.removeFromActiveProposals(proposal.id);
 
       if (proposal.targetState) {
-        await this.stateMachine.transition(proposal.targetState, 'system', {
+        const result = await this.stateMachine.transition(proposal.targetState, 'system', {
           proposalId: proposal.id,
           triggeredBy: 'governance_auto_execute',
         });
+        console.log(`[VoteService] Transition result:`, result);
+        if (!result.success) {
+          throw new Error(`State transition failed: ${result.error}`);
+        }
       }
 
       this.emitEvent({

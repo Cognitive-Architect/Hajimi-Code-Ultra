@@ -33,6 +33,7 @@ import {
 
 // B-05/09: 导入三层韧性组件
 import { IndexedDBStore } from './persistence/IndexedDBStore';
+import { RedisStore } from './persistence/RedisStore';
 import { 
   TieredFallback, 
   FallbackConfig, 
@@ -129,6 +130,7 @@ class TieredStorageArchitecture {
   /**
    * B-05/09: 初始化三层韧性管理器
    * 根据环境自动选择合适的存储层
+   * B-02/04 FIX: 自动检测Redis环境变量并创建RedisStore
    */
   private initializeFallbackManager(): void {
     const fallbackConfig: Partial<FallbackConfig> = {
@@ -143,6 +145,17 @@ class TieredStorageArchitecture {
     if (this.config.storage?.redis) {
       // 使用自定义 Redis 存储
       redisStore = this.config.storage.redis;
+    } else if (isNode()) {
+      // B-02/04 FIX: Node环境自动检测Redis配置
+      const redisUrl = process.env.REDIS_URL || 
+                       process.env.UPSTASH_REDIS_REST_URL || 
+                       process.env.KV_REST_API_URL;
+      if (redisUrl) {
+        // B-02/04 FIX: 创建RedisStore实例
+        console.log(`[TSA] Detected Redis URL: ${redisUrl.substring(0, 20)}...`);
+        redisStore = new RedisStore();
+        console.log('[TSA] RedisStore instance created');
+      }
     }
 
     if (this.config.storage?.indexedDB) {

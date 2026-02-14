@@ -7,8 +7,14 @@
  * - 实现TTL管理
  * - 错误处理和重试机制
  * 
+ * B-02/04 FIX: 添加标准Redis协议支持（ioredis）
+ * - 支持 redis:// 和 rediss:// 协议
+ * - 修复本地Redis连接问题
+ * 
  * DEBT-004 清偿标记: TSA虚假持久化 → 已实现真实Redis持久化
  */
+
+import Redis from 'ioredis';
 
 /**
  * 存储适配器接口
@@ -72,6 +78,173 @@ class RedisError extends Error {
   constructor(message: string, public readonly cause?: Error) {
     super(message);
     this.name = 'RedisError';
+  }
+}
+
+/**
+ * 标准Redis客户端（使用ioredis）
+ * B-02/04 FIX: 支持 redis:// 和 rediss:// 协议
+ */
+class StandardRedisClient {
+  private client: Redis | null = null;
+  private config: RedisConfig;
+  private maxRetries: number;
+  private retryInterval: number;
+
+  constructor(config: RedisConfig) {
+    this.config = config;
+    this.maxRetries = config.maxRetries ?? 3;
+    this.retryInterval = config.retryInterval ?? 1000;
+  }
+
+  /**
+   * 创建Redis连接
+   */
+  connect(): void {
+    if (this.client) return;
+
+    const url = this.config.url!;
+    
+    // 解析Redis URL
+    const urlObj = new URL(url);
+    const isTls = urlObj.protocol === 'rediss:';
+    
+    this.client = new Redis({
+      host: urlObj.hostname,
+      port: parseInt(urlObj.port || '6379', 10),
+      password: urlObj.password || undefined,
+      username: urlObj.username || undefined,
+      db: this.config.db ?? 0,
+      tls: isTls ? {} : undefined,
+      connectTimeout: this.config.connectTimeout ?? 5000,
+      maxRetriesPerRequest: this.maxRetries,
+      retryStrategy: (times) => {
+        if (times > this.maxRetries) return null;
+        return Math.min(times * this.retryInterval, 5000);
+      },
+      lazyConnect: true, // 延迟连接，手动调用connect
+    });
+  }
+
+  /**
+   * 断开连接
+   */
+  async disconnect(): Promise<void> {
+    if (this.client) {
+      await this.client.quit();
+      this.client = null;
+    }
+  }
+
+  /**
+   * B-02/04 FIX: 建立实际连接（ioredis lazyConnect模式需要）
+   */
+  async ensureConnected(): Promise<boolean> {
+    if (!this.client) return false;
+    try {
+      // ioredis lazyConnect模式下需要手动连接
+      await this.client.connect();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 测试连接
+   */
+  async ping(): Promise<boolean> {
+    if (!this.client) return false;
+    try {
+      const result = await this.client.ping();
+      return result === 'PONG';
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 获取值
+   */
+  async get(key: string): Promise<string | null> {
+    if (!this.client) return null;
+    const result = await this.client.get(key);
+    return result;
+  }
+
+  /**
+   * 设置值
+   */
+  async set(key: string, value: string, ttl?: number): Promise<void> {
+    if (!this.client) return;
+    if (ttl !== undefined && ttl > 0) {
+      // TTL转换为毫秒，ioredis使用毫秒
+      await this.client.set(key, value, 'PX', ttl);
+    } else {
+      await this.client.set(key, value);
+    }
+  }
+
+  /**
+   * 删除键
+   */
+  async del(key: string): Promise<void> {
+    if (!this.client) return;
+    await this.client.del(key);
+  }
+
+  /**
+   * 清空数据库（使用SCAN + DEL，避免阻塞）
+   */
+  async flush(pattern: string): Promise<void> {
+    if (!this.client) return;
+    
+    let cursor = '0';
+    do {
+      const result = await this.client.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = result[0];
+      const keys = result[1];
+      
+      if (keys.length > 0) {
+        await this.client.del(...keys);
+      }
+    } while (cursor !== '0');
+  }
+
+  /**
+   * 扫描键
+   */
+  async scanKeys(pattern: string): Promise<string[]> {
+    if (!this.client) return [];
+    
+    const keys: string[] = [];
+    let cursor = '0';
+    
+    do {
+      const result = await this.client.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = result[0];
+      keys.push(...result[1]);
+    } while (cursor !== '0');
+    
+    return keys;
+  }
+
+  /**
+   * 检查键是否存在
+   */
+  async exists(key: string): Promise<boolean> {
+    if (!this.client) return false;
+    const result = await this.client.exists(key);
+    return result === 1;
+  }
+
+  /**
+   * 获取TTL（毫秒）
+   */
+  async ttl(key: string): Promise<number> {
+    if (!this.client) return -1;
+    // pttl返回毫秒
+    return await this.client.pttl(key);
   }
 }
 
@@ -328,15 +501,16 @@ class MemoryStorageAdapter implements StorageAdapter {
 
 /**
  * Redis存储实现
- * 支持Upstash Redis REST API
+ * 支持Upstash Redis REST API 和 标准Redis协议
  */
 export class RedisStore implements StorageAdapter {
-  private client: UpstashRedisClient | null = null;
+  private client: UpstashRedisClient | StandardRedisClient | null = null;
   private fallbackAdapter: MemoryStorageAdapter;
   private config: RedisConfig;
   private state: ConnectionState = ConnectionState.DISCONNECTED;
   private connectionError: Error | null = null;
   private useFallback: boolean = false;
+  private isStandardRedis: boolean = false;
 
   constructor(config?: Partial<RedisConfig>) {
     // 从环境变量读取配置
@@ -352,9 +526,19 @@ export class RedisStore implements StorageAdapter {
 
     this.fallbackAdapter = new MemoryStorageAdapter(this.config.keyPrefix);
     
-    // 如果有配置Redis，初始化客户端
-    if (this.config.url && this.isUpstashUrl(this.config.url)) {
-      this.client = new UpstashRedisClient(this.config);
+    // B-02/04 FIX: 支持标准Redis协议和Upstash REST API
+    if (this.config.url) {
+      if (this.isUpstashUrl(this.config.url)) {
+        // Upstash REST API
+        this.client = new UpstashRedisClient(this.config);
+        this.isStandardRedis = false;
+      } else if (this.isStandardRedisUrl(this.config.url)) {
+        // 标准Redis协议 (redis:// 或 rediss://)
+        const standardClient = new StandardRedisClient(this.config);
+        standardClient.connect();
+        this.client = standardClient;
+        this.isStandardRedis = true;
+      }
     }
   }
 
@@ -390,6 +574,13 @@ export class RedisStore implements StorageAdapter {
   }
 
   /**
+   * B-02/04 FIX: 判断是否为标准Redis URL
+   */
+  private isStandardRedisUrl(url: string): boolean {
+    return url.startsWith('redis://') || url.startsWith('rediss://');
+  }
+
+  /**
    * 获取完整键名
    */
   private getFullKey(key: string): string {
@@ -404,6 +595,35 @@ export class RedisStore implements StorageAdapter {
       return this.fallbackAdapter;
     }
     return this as StorageAdapter;
+  }
+
+  /**
+   * B-02/04 FIX: 初始化方法（供TieredFallback调用）
+   * @returns 是否成功连接
+   */
+  async initialize(): Promise<boolean> {
+    return this.connect();
+  }
+
+  /**
+   * 关闭方法（供TieredFallback调用）
+   */
+  async close(): Promise<void> {
+    return this.disconnect();
+  }
+
+  /**
+   * B-02/04 FIX: 健康检查方法（供TieredFallback调用）
+   */
+  async healthCheck(): Promise<boolean> {
+    return this.isConnected();
+  }
+
+  /**
+   * 获取可用性状态（供TieredFallback调用）
+   */
+  get isAvailable(): boolean {
+    return this.isConnected();
   }
 
   /**
@@ -425,6 +645,11 @@ export class RedisStore implements StorageAdapter {
     this.state = ConnectionState.CONNECTING;
     
     try {
+      // B-02/04 FIX: 标准Redis需要先建立连接
+      if (this.isStandardRedis && this.client instanceof StandardRedisClient) {
+        await this.client.ensureConnected();
+      }
+
       const isConnected = await Promise.race([
         this.client.ping(),
         new Promise<boolean>((_, reject) => 
@@ -456,6 +681,12 @@ export class RedisStore implements StorageAdapter {
    */
   async disconnect(): Promise<void> {
     this.state = ConnectionState.DISCONNECTED;
+    
+    // B-02/04 FIX: 正确断开标准Redis连接
+    if (this.isStandardRedis && this.client instanceof StandardRedisClient) {
+      await this.client.disconnect();
+    }
+    
     this.client = null;
     this.fallbackAdapter.destroy();
   }
