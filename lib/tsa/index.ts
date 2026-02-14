@@ -1,5 +1,5 @@
 /**
- * TSA (Tiered Storage Architecture) 完整实现 - B-05/09更新
+ * TSA (Tiered Storage Architecture) 完整实现 - B-07/09更新
  * 
  * 提供三层存储架构：
  * - TRANSIENT: 热数据，内存存储，快速访问
@@ -10,6 +10,11 @@
  * - Redis → IndexedDB → Memory 自动故障转移
  * - 自动故障检测与恢复
  * - 确保数据不丢
+ * 
+ * B-07/09: 新增故障恢复机制
+ * - Fallback: Redis故障时自动降级到本地存储
+ * - Repair: 数据损坏检测与修复（Checksum验证）
+ * - Split-Brain: 多写冲突解决
  * 
  * 技术债务清偿：DEBT-004 TSA虚假持久化
  */
@@ -76,6 +81,54 @@ export {
   TieredFallback,
 };
 export type { StorageAdapter, StorageSetOptions };
+
+// B-07/09: 类型导出
+
+// B-07/09: 导出故障恢复机制
+export {
+  // Fallback模块
+  FallbackMemoryStore,
+  createFallbackManager,
+  ChecksumUtil,
+  DEFAULT_FALLBACK_STORAGE_CONFIG,
+  
+  // Repair模块
+  DataRepair,
+  BackupManager,
+  SplitBrainResolver,
+  RepairManager,
+  DEFAULT_REPAIR_CONFIG,
+  DEFAULT_SPLIT_BRAIN_CONFIG,
+  
+  // 控制器
+  TSAResilienceController,
+  createResilienceController,
+  DEFAULT_RESILIENCE_CONFIG,
+} from './resilience';
+
+export type {
+  // Fallback类型
+  FallbackStorageConfig,
+  DataSyncResult,
+  LocalFileEntry,
+  WALEntry,
+  FallbackManager,
+  
+  // Repair类型
+  RepairConfig,
+  RepairEvent,
+  CorruptionReport,
+  RepairResult,
+  ConflictReport,
+  SplitBrainConfig,
+  ConflictResolutionStrategy,
+  
+  // 控制器类型
+  ResilienceConfig,
+  ResilienceStatus,
+  ResilienceEvent,
+  ResilienceEventHandler,
+} from './resilience';
 
 // 内部存储项接口
 interface StorageItem<T> {
@@ -367,8 +420,14 @@ class TieredStorageArchitecture {
   /**
    * 清空所有数据
    * B-05/09: 同时清空三层韧性存储
+   * B-01/09 FIX: 确保已初始化再执行清空
    */
   async clear(): Promise<void> {
+    // FIX: 先确保TSA已初始化
+    if (!this.initialized) {
+      await this.init();
+    }
+    
     // B-05/09: 清空三层韧性存储
     if (this.fallbackManager) {
       try {

@@ -713,10 +713,11 @@ export class RedisStore implements StorageAdapter {
 
   /**
    * B-02/06 FIX: 初始化连接，优化诊断日志和连接可靠性
-   * @returns 是否成功连接
+   * B-01/09 FIX: 修复连接状态返回值，确保TieredFallback正确处理
+   * @returns 是否成功连接（仅当真实Redis连接成功时返回true）
    */
   async connect(): Promise<boolean> {
-    if (this.state === ConnectionState.CONNECTED) {
+    if (this.state === ConnectionState.CONNECTED && !this.useFallback) {
       console.log('[RedisStore] Already connected to Redis');
       return true;
     }
@@ -724,8 +725,10 @@ export class RedisStore implements StorageAdapter {
     if (!this.client) {
       console.log('[RedisStore] No Redis config available, using memory fallback');
       this.useFallback = true;
+      // FIX: 当使用fallback时，返回false表示真实Redis未连接
+      // 但保持state为CONNECTED以便getAdapter()能正常工作
       this.state = ConnectionState.CONNECTED;
-      return true;
+      return false;  // FIX: 返回false表示没有真实Redis连接
     }
 
     this.state = ConnectionState.CONNECTING;
@@ -774,8 +777,10 @@ export class RedisStore implements StorageAdapter {
       console.error(`  MaxRetries: ${this.config.maxRetries}`);
       console.warn('[RedisStore] Falling back to memory storage');
       
+      // FIX: 即使连接失败，也启用fallback以便继续工作
       this.useFallback = true;
-      return false;
+      this.state = ConnectionState.CONNECTED;  // 允许fallback工作
+      return false;  // FIX: 返回false表示真实Redis未连接
     }
   }
 
@@ -796,9 +801,19 @@ export class RedisStore implements StorageAdapter {
 
   /**
    * 检查是否已连接
+   * B-01/09 FIX: 即使使用fallback也返回true，确保TieredFallback能正常工作
    */
   isConnected(): boolean {
+    // FIX: 只要state是CONNECTED就返回true，无论是否使用fallback
+    // 这样TieredFallback不会跳过Redis层，而是让RedisStore自己处理fallback
     return this.state === ConnectionState.CONNECTED;
+  }
+
+  /**
+   * B-01/09 FIX: 检查是否有真实的Redis连接（非fallback）
+   */
+  hasRealRedisConnection(): boolean {
+    return this.state === ConnectionState.CONNECTED && !this.useFallback;
   }
 
   /**

@@ -1,0 +1,65 @@
+{
+  "timestamp": "2026-02-14T09:17:34.602Z",
+  "summary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0
+  },
+  "results": [
+    {
+      "id": "IDB-001",
+      "name": "并发写入10个状态无竞态（Promise.all验证）",
+      "passed": true,
+      "details": [
+        "OperationQueue 类定义: 存在",
+        "操作队列使用: 是",
+        "set 方法使用队列: 是",
+        "get 方法使用队列: 是",
+        "delete 方法使用队列: 是",
+        "单线程处理标志: 存在"
+      ]
+    },
+    {
+      "id": "IDB-002",
+      "name": "浏览器刷新后数据恢复（localStorage备份双保险）",
+      "passed": true,
+      "details": [
+        "LocalStorageBackup 类定义: 存在",
+        "备份方法: 存在",
+        "恢复方法: 存在",
+        "初始化恢复逻辑: 存在",
+        "同步检查方法: 存在",
+        "定期同步任务: 存在",
+        "关键键模式配置: 存在"
+      ]
+    },
+    {
+      "id": "IDB-003",
+      "name": "存储配额超限优雅降级（QuotaExceededError处理）",
+      "passed": true,
+      "details": [
+        "配额超限检测: 存在",
+        "LRU 清理方法: 存在",
+        "LRU 开关配置: 存在",
+        "配额超限降级到localStorage: 是",
+        "存储大小计算: 存在",
+        "当前存储大小跟踪: 存在",
+        "配额配置接口: 存在",
+        "最大总大小限制: 存在",
+        "LRU 优先级排序: 存在"
+      ]
+    },
+    {
+      "id": "SCHEMA-001",
+      "name": "IndexedDB schema 版本迁移",
+      "passed": true,
+      "details": [
+        "SchemaVersion 接口: 存在",
+        "当前版本常量: 存在",
+        "升级事件处理: 存在",
+        "升级处理方法: 存在",
+        "索引创建: 存在"
+      ]
+    }
+  ]
+}

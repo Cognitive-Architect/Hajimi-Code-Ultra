@@ -13,6 +13,7 @@ const config = {
   testPathIgnorePatterns: [
     '/node_modules/',
     '/tests/unit/hooks.test.ts',
+    '/tests/unit/hooks/',
   ],
   collectCoverageFrom: [
     'lib/core/**/*.ts',

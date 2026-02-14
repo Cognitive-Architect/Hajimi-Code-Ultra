@@ -33,6 +33,15 @@ export type {
   IndexedDBStoredItem,
 } from './IndexedDBStore';
 
+// B-04/09: IndexedDB 存储 v2 - 修复异步竞态条件
+export { IndexedDBStoreV2, DataPriority as DataPriorityV2 } from './indexeddb-store-v2';
+export type { 
+  StorageAdapter as IStorageAdapterV2,
+  SetOptions as SetOptionsV2,
+  IndexedDBStoreV2Config,
+  IndexedDBStoredItem as IndexedDBStoredItemV2,
+} from './indexeddb-store-v2';
+
 // B-05/09: 三层韧性管理器
 export { 
   TieredFallback, 
