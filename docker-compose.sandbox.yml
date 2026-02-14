@@ -6,6 +6,9 @@ services:
     image: alpine:latest
     container_name: sandbox-${SANDBOX_ID:-default}
     
+    # 必须添加：容器保活命令（防止容器启动即退出）
+    command: ["tail", "-f", "/dev/null"]
+    
     # Rootless 用户配置 (UID 1000)
     user: "1000:1000"
     
@@ -36,7 +39,7 @@ services:
     # 安全选项
     security_opt:
       - no-new-privileges:true
-      - seccomp:./config/seccomp-default.json
+      # - seccomp:./config/seccomp-default.json  # 临时禁用 seccomp 进行测试
     
     # 禁止特权
     privileged: false
@@ -81,6 +84,10 @@ services:
   code-injector:
     image: alpine:latest
     container_name: code-injector-${SANDBOX_ID:-default}
+    
+    # 容器保活命令
+    command: ["tail", "-f", "/dev/null"]
+    
     network_mode: none
     read_only: true
     user: "1000:1000"
@@ -94,4 +101,3 @@ services:
       - SANDBOX_ID=${SANDBOX_ID:-default}
     profiles:
       - injector
-    entrypoint: ["sh", "-c", "echo 'Code injector ready'; sleep 1"]

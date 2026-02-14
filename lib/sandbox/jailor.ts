@@ -11,6 +11,7 @@ import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 import { randomUUID } from 'crypto';
 import * as path from 'path';
+import { execWithEnv, execDockerCompose, EnvConfig } from './shell-adapter';
 
 const execAsync = promisify(exec);
 
@@ -129,9 +130,16 @@ export class Jailor {
    */
   private async dockerCommand(
     command: string, 
-    timeout = 30000
+    timeout = 30000,
+    env?: EnvConfig
   ): Promise<{ stdout: string; stderr: string }> {
     this.log(`执行命令: ${command}`);
+    
+    if (env && Object.keys(env).length > 0) {
+      // 使用跨平台适配器执行，确保环境变量正确传递
+      const result = await execWithEnv(command, env, { timeout, cwd: process.cwd() });
+      return { stdout: result.stdout, stderr: result.stderr };
+    }
     
     return execAsync(command, { 
       timeout,
@@ -163,15 +171,23 @@ export class Jailor {
         await this.dockerCommand(`docker rm -f ${containerName}`);
       }
 
-      // 构建 docker-compose 命令
-      const envVars = [
-        `SANDBOX_ID=${id}`,
-        ...(config.env ? Object.entries(config.env).map(([k, v]) => `${k}=${v}`) : [])
-      ].join(' ');
+      // 构建环境变量配置
+      const envConfig: EnvConfig = {
+        SANDBOX_ID: id,
+        ...config.env
+      };
 
-      // 启动容器
-      const composeCmd = `${envVars} docker-compose -f "${this.composeFilePath}" up -d --no-deps sandbox`;
-      await this.dockerCommand(composeCmd, 60000);
+      // 启动容器（使用跨平台适配器，确保环境变量正确传递）
+      const composeResult = await execDockerCompose(
+        this.composeFilePath,
+        ['up', '-d', '--no-deps', 'sandbox'],
+        envConfig,
+        { timeout: 60000 }
+      );
+      
+      if (composeResult.exitCode !== 0) {
+        throw new Error(`Docker Compose 启动失败: ${composeResult.stderr}`);
+      }
 
       // 等待容器启动
       await this.waitForContainer(containerName, 10000);
@@ -220,7 +236,7 @@ export class Jailor {
     while (Date.now() - start < timeoutMs) {
       try {
         const { stdout } = await this.dockerCommand(
-          `docker inspect --format='{{.State.Status}}' ${containerName}`
+          `docker inspect --format="{{.State.Status}}" ${containerName}`
         );
         
         const status = stdout.trim();
@@ -373,7 +389,7 @@ export class Jailor {
     try {
       // 获取容器状态
       const { stdout: inspect } = await this.dockerCommand(
-        `docker inspect --format='{{.State.Status}}|{{.State.Health.Status}}|{{.State.Running}}' ${containerName}`
+        `docker inspect --format="{{.State.Status}}|{{.State.Health.Status}}|{{.State.Running}}" ${containerName}`
       );
       
       const [status, healthStatus, running] = inspect.trim().split('|');
