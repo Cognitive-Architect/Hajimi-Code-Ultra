@@ -1,0 +1,67 @@
+{
+  "name": "hajimi-desktop",
+  "version": "1.0.0",
+  "description": "Hajimi Code Ultra - Desktop IDE (Electron + Next.js)",
+  "private": true,
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "npm run build:electron && electron .",
+    "build": "next build && npm run build:electron",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "build:renderer": "next build",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "type-check": "tsc --noEmit -p electron/tsconfig.json",
+    "test": "jest",
+    "lint": "eslint electron/ renderer/"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "chokidar": "^3.6.0",
+    "electron-log": "^5.1.0",
+    "electron-store": "^8.1.0",
+    "electron-updater": "^6.1.7",
+    "next": "14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "uuid": "^9.0.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@monaco-editor/react": "^4.6.0",
+    "@types/better-sqlite3": "^7.6.9",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/uuid": "^9.0.8",
+    "autoprefixer": "^10.4.17",
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.0"
+  },
+  "build": {
+    "appId": "com.cognitivearchitect.hajimi",
+    "productName": "Hajimi Code Ultra",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "renderer/.next/**/*",
+      "renderer/public/**/*",
+      "node_modules/better-sqlite3/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}

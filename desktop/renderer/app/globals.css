@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-soyorin: #884499;
+  --color-mike: #7777AA;
+  --color-qa: #66BB66;
+  --color-engineer: #FFDD88;
+  --color-pm: #884499;
+  --color-arch: #EE6677;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-900 text-white;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* 选中文字样式 */
+::selection {
+  background: rgba(136, 68, 153, 0.3);
+}
