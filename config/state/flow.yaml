@@ -1,0 +1,95 @@
+states:
+  - name: IDLE
+    description: 空闲状态，等待任务启动
+  - name: DESIGN
+    description: 设计阶段，架构师主导
+  - name: CODE
+    description: 编码阶段，工程师主导
+  - name: AUDIT
+    description: 审计阶段，QA主导
+  - name: BUILD
+    description: 构建阶段，自动化执行
+  - name: DEPLOY
+    description: 部署阶段，运维主导
+  - name: DONE
+    description: 完成状态，任务结束
+
+transitions:
+  # IDLE 流转
+  - from: IDLE
+    to: DESIGN
+    allowed: true
+    requiredRoles: [pm, arch]
+    description: PM或架构师启动设计
+
+  # DESIGN 流转
+  - from: DESIGN
+    to: CODE
+    allowed: true
+    requiredRoles: [arch, engineer]
+    description: 设计完成，进入编码
+  - from: DESIGN
+    to: IDLE
+    allowed: true
+    requiredRoles: [pm]
+    description: PM取消设计
+
+  # CODE 流转
+  - from: CODE
+    to: AUDIT
+    allowed: true
+    requiredRoles: [engineer]
+    description: 编码完成，提交审计
+  - from: CODE
+    to: DESIGN
+    allowed: true
+    requiredRoles: [arch]
+    description: 架构师要求重新设计
+
+  # AUDIT 流转
+  - from: AUDIT
+    to: BUILD
+    allowed: true
+    requiredRoles: [qa]
+    description: 审计通过，进入构建
+  - from: AUDIT
+    to: CODE
+    allowed: true
+    requiredRoles: [qa]
+    description: QA要求修复问题
+
+  # BUILD 流转
+  - from: BUILD
+    to: DEPLOY
+    allowed: true
+    requiredRoles: [system, mike]
+    description: 构建成功，进入部署
+  - from: BUILD
+    to: CODE
+    allowed: true
+    requiredRoles: [system]
+    description: 构建失败，返回编码
+
+  # DEPLOY 流转
+  - from: DEPLOY
+    to: DONE
+    allowed: true
+    requiredRoles: [mike, system]
+    description: 部署成功，任务完成
+  - from: DEPLOY
+    to: BUILD
+    allowed: true
+    requiredRoles: [mike]
+    description: 部署失败，重新构建
+
+# 非法流转（明确禁止）
+forbiddenTransitions:
+  - from: IDLE
+    to: CODE
+    reason: 必须先经过设计阶段
+  - from: IDLE
+    to: DEPLOY
+    reason: 必须经过完整流程
+  - from: DONE
+    to: ANY
+    reason: 终态不可流转

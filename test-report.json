@@ -1,0 +1,264 @@
+{
+  "summary": {
+    "total": 28,
+    "passed": 14,
+    "failed": 20,
+    "skipped": 0,
+    "passRate": "50.00%",
+    "duration": 15496,
+    "timestamp": "2026-02-14T04:25:10.108Z"
+  },
+  "suites": [
+    {
+      "id": "STM",
+      "name": "状态机测试",
+      "status": "passed",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "duration": 2367,
+      "tests": [
+        {
+          "id": "STM-001",
+          "name": "获取当前状态",
+          "status": "passed",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "STM-002",
+          "name": "合法流转IDLE→DESIGN",
+          "status": "passed",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "STM-003",
+          "name": "合法流转DESIGN→CODE",
+          "status": "passed",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "STM-004",
+          "name": "非法流转被拒绝",
+          "status": "passed",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "STM-005",
+          "name": "状态历史记录完整",
+          "status": "passed",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "STM-006",
+          "name": "订阅通知机制",
+          "status": "passed",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "STM-007",
+          "name": "权限验证",
+          "status": "passed",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "STM-008",
+          "name": "完整流转链路",
+          "status": "passed",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ]
+    },
+    {
+      "id": "GOV",
+      "name": "治理引擎测试",
+      "status": "failed",
+      "passed": 0,
+      "failed": 6,
+      "skipped": 0,
+      "duration": 2974,
+      "tests": [
+        {
+          "id": "GOV-001",
+          "name": "PM创建提案",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "GOV-002",
+          "name": "非PM创建被拒",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "GOV-003",
+          "name": "列表倒序排列",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "GOV-004",
+          "name": "30分钟过期",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "GOV-005",
+          "name": "投票提交统计",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "GOV-006",
+          "name": "60%阈值自动执行",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ]
+    },
+    {
+      "id": "A2A",
+      "name": "A2A消息测试",
+      "status": "failed",
+      "passed": 0,
+      "failed": 4,
+      "skipped": 0,
+      "duration": 5477,
+      "tests": [
+        {
+          "id": "A2A-001",
+          "name": "发送消息",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "A2A-002",
+          "name": "消息历史查询",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "A2A-003",
+          "name": "SecondMe适配",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "A2A-004",
+          "name": "流式消息发送",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ]
+    },
+    {
+      "id": "API",
+      "name": "API权限测试",
+      "status": "failed",
+      "passed": 0,
+      "failed": 5,
+      "skipped": 0,
+      "duration": 1942,
+      "tests": [
+        {
+          "id": "API-001",
+          "name": "统一错误格式",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "API-002",
+          "name": "Token认证",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "API-003",
+          "name": "角色权限拦截",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "API-004",
+          "name": "Zod请求验证",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "API-005",
+          "name": "错误代码分类",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ]
+    },
+    {
+      "id": "INT",
+      "name": "集成测试",
+      "status": "failed",
+      "passed": 0,
+      "failed": 5,
+      "skipped": 0,
+      "duration": 2736,
+      "tests": [
+        {
+          "id": "INT-001",
+          "name": "端到端工作流",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "INT-002",
+          "name": "状态机与治理集成",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "INT-003",
+          "name": "A2A与治理集成",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "INT-004",
+          "name": "认证与授权集成",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        },
+        {
+          "id": "INT-005",
+          "name": "错误处理集成",
+          "status": "unknown",
+          "duration": 0,
+          "failureMessages": []
+        }
+      ]
+    }
+  ]
+}

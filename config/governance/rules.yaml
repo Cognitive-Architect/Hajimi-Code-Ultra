@@ -1,0 +1,566 @@
+# ============================================================================
+# 七权流转规则配置
+# 
+# 迁移来源: src/lib/governance/rules.ts
+# 迁移方式: 重构保留 - 逻辑提取为配置
+# 代码行数: ~200行逻辑提取
+# ============================================================================
+
+# 版本信息
+version: "1.0.0"
+description: "六Agent治理系统的七权流转规则配置"
+lastUpdated: "2024"
+
+# ============================================================================
+# Agent 角色定义
+# ============================================================================
+
+roles:
+  pm:
+    id: "pm"
+    name: "Product Manager"
+    nameCn: "产品经理"
+    description: "负责需求分析和优先级管理"
+    responsibilities:
+      - "requirement-analysis"
+      - "priority-management"
+      - "scope-definition"
+    capabilities:
+      - "analyze-requirements"
+      - "define-scope"
+      - "prioritize-tasks"
+    weight: 1.0
+    
+  arch:
+    id: "arch"
+    name: "Architect"
+    nameCn: "架构师"
+    description: "负责系统架构设计和技术选型"
+    responsibilities:
+      - "architecture-design"
+      - "tech-selection"
+      - "performance-planning"
+    capabilities:
+      - "design-architecture"
+      - "evaluate-tech"
+      - "define-interfaces"
+    weight: 1.0
+    
+  qa:
+    id: "qa"
+    name: "QA Engineer"
+    nameCn: "QA工程师"
+    description: "负责质量保障和测试策略"
+    responsibilities:
+      - "quality-assurance"
+      - "test-strategy"
+      - "bug-tracking"
+    capabilities:
+      - "design-tests"
+      - "execute-tests"
+      - "report-bugs"
+    weight: 1.0
+    
+  engineer:
+    id: "engineer"
+    name: "Software Engineer"
+    nameCn: "开发工程师"
+    description: "负责代码实现和功能开发"
+    responsibilities:
+      - "code-implementation"
+      - "feature-development"
+      - "code-review"
+    capabilities:
+      - "write-code"
+      - "refactor-code"
+      - "fix-bugs"
+    weight: 1.0
+    
+  mike:
+    id: "mike"
+    name: "Mike (Packager)"
+    nameCn: "打包者"
+    description: "负责构建打包和发布管理"
+    responsibilities:
+      - "build-management"
+      - "release-packaging"
+      - "deployment-prep"
+    capabilities:
+      - "create-builds"
+      - "manage-releases"
+      - "prepare-deployments"
+    weight: 1.0
+    
+  ops:
+    id: "ops"
+    name: "DevOps Engineer"
+    nameCn: "运维工程师"
+    description: "负责部署运维和监控管理"
+    responsibilities:
+      - "deployment-management"
+      - "monitoring"
+      - "incident-response"
+    capabilities:
+      - "deploy-services"
+      - "setup-monitoring"
+      - "handle-incidents"
+    weight: 1.0
+
+# ============================================================================
+# 七权定义 (Seven Powers)
+# ============================================================================
+
+powers:
+  # 1. 提案权 (Proposal Power)
+  proposal:
+    id: "proposal"
+    name: "Proposal Power"
+    nameCn: "提案权"
+    description: "发起状态流转提案的权力"
+    holders:
+      - "pm"
+      - "arch"
+      - "qa"
+      - "engineer"
+      - "mike"
+      - "ops"
+    constraints:
+      maxProposalsPerHour: 10
+      cooldownMinutes: 5
+    
+  # 2. 投票权 (Voting Power)
+  voting:
+    id: "voting"
+    name: "Voting Power"
+    nameCn: "投票权"
+    description: "对提案进行投票的权力"
+    holders:
+      - "pm"
+      - "arch"
+      - "qa"
+      - "engineer"
+      - "mike"
+      - "ops"
+    constraints:
+      voteTimeoutMinutes: 30
+      abstainAllowed: true
+    
+  # 3. 否决权 (Veto Power)
+  veto:
+    id: "veto"
+    name: "Veto Power"
+    nameCn: "否决权"
+    description: "否决不符合要求的提案的权力"
+    holders:
+      - "pm"
+      - "arch"
+      - "qa"
+    constraints:
+      requiresReason: true
+      maxVetosPerDay: 5
+    
+  # 4. 执行权 (Execution Power)
+  execution:
+    id: "execution"
+    name: "Execution Power"
+    nameCn: "执行权"
+    description: "执行已通过提案的权力"
+    holders:
+      - "engineer"
+      - "mike"
+      - "ops"
+    constraints:
+      requiresApproval: true
+      executionTimeoutMinutes: 60
+    
+  # 5. 监督权 (Oversight Power)
+  oversight:
+    id: "oversight"
+    name: "Oversight Power"
+    nameCn: "监督权"
+    description: "监督执行过程的权力"
+    holders:
+      - "pm"
+      - "qa"
+    constraints:
+      canPauseExecution: true
+      canRequestRollback: true
+    
+  # 6. 仲裁权 (Arbitration Power)
+  arbitration:
+    id: "arbitration"
+    name: "Arbitration Power"
+    nameCn: "仲裁权"
+    description: "解决争议的权力"
+    holders:
+      - "pm"
+      - "arch"
+    constraints:
+      requiresMultipleHolders: true
+      minHolders: 2
+    
+  # 7. 记录权 (Recording Power)
+  recording:
+    id: "recording"
+    name: "Recording Power"
+    nameCn: "记录权"
+    description: "记录治理过程的权力"
+    holders:
+      - "system"
+    constraints:
+      immutable: true
+      publicAccess: true
+
+# ============================================================================
+# 状态流转规则
+# ============================================================================
+
+transitions:
+  # DESIGN -> CODE
+  - from: "DESIGN"
+    to: "CODE"
+    requires:
+      proposal: true
+      votes:
+        minVotes: 2
+        minApproveRatio: 0.5
+      requiredRoles:
+        - "pm"
+        - "arch"
+    timeout: 1800  # 30分钟
+    
+  # CODE -> AUDIT
+  - from: "CODE"
+    to: "AUDIT"
+    requires:
+      proposal: true
+      votes:
+        minVotes: 1
+        minApproveRatio: 0.5
+      requiredRoles:
+        - "engineer"
+    timeout: 1800
+    
+  # AUDIT -> BUILD
+  - from: "AUDIT"
+    to: "BUILD"
+    requires:
+      proposal: true
+      votes:
+        minVotes: 2
+        minApproveRatio: 0.67
+      requiredRoles:
+        - "qa"
+        - "arch"
+    timeout: 3600  # 60分钟
+    
+  # AUDIT -> CODE (回退)
+  - from: "AUDIT"
+    to: "CODE"
+    requires:
+      proposal: true
+      votes:
+        minVotes: 1
+        minApproveRatio: 0.5
+      requiredRoles:
+        - "qa"
+    isRollback: true
+    timeout: 1800
+    
+  # BUILD -> DEPLOY
+  - from: "BUILD"
+    to: "DEPLOY"
+    requires:
+      proposal: true
+      votes:
+        minVotes: 1
+        minApproveRatio: 0.5
+      requiredRoles:
+        - "mike"
+    timeout: 1800
+    
+  # BUILD -> CODE (回退)
+  - from: "BUILD"
+    to: "CODE"
+    requires:
+      proposal: true
+      votes:
+        minVotes: 2
+        minApproveRatio: 0.5
+      requiredRoles:
+        - "qa"
+        - "arch"
+    isRollback: true
+    timeout: 1800
+    
+  # DEPLOY -> COMPLETE
+  - from: "DEPLOY"
+    to: "COMPLETE"
+    requires:
+      proposal: true
+      votes:
+        minVotes: 2
+        minApproveRatio: 0.75
+      requiredRoles:
+        - "ops"
+        - "pm"
+    timeout: 3600
+    
+  # DEPLOY -> BUILD (回退)
+  - from: "DEPLOY"
+    to: "BUILD"
+    requires:
+      proposal: true
+      votes:
+        minVotes: 1
+        minApproveRatio: 0.5
+      requiredRoles:
+        - "ops"
+    isRollback: true
+    timeout: 1800
+
+# ============================================================================
+# 投票规则
+# ============================================================================
+
+voting:
+  # 默认投票规则
+  default:
+    minVotes: 2
+    minApproveRatio: 0.5
+    timeoutMinutes: 30
+    allowAbstain: true
+    
+  # 关键状态流转投票规则
+  critical:
+    minVotes: 3
+    minApproveRatio: 0.67
+    timeoutMinutes: 60
+    allowAbstain: false
+    
+  # 紧急投票规则
+  emergency:
+    minVotes: 1
+    minApproveRatio: 0.5
+    timeoutMinutes: 5
+    allowAbstain: true
+    requiresReason: true
+
+# ============================================================================
+# 权限矩阵
+# ============================================================================
+
+permissions:
+  # 状态相关权限
+  state:
+    view:
+      - "pm"
+      - "arch"
+      - "qa"
+      - "engineer"
+      - "mike"
+      - "ops"
+    transition:
+      - "pm"
+      - "arch"
+      - "qa"
+      - "engineer"
+      - "mike"
+      - "ops"
+    rollback:
+      - "pm"
+      - "arch"
+      - "qa"
+      
+  # 提案相关权限
+  proposal:
+    create:
+      - "pm"
+      - "arch"
+      - "qa"
+      - "engineer"
+      - "mike"
+      - "ops"
+    view:
+      - "pm"
+      - "arch"
+      - "qa"
+      - "engineer"
+      - "mike"
+      - "ops"
+    cancel:
+      - "pm"
+      
+  # 投票相关权限
+  vote:
+    cast:
+      - "pm"
+      - "arch"
+      - "qa"
+      - "engineer"
+      - "mike"
+      - "ops"
+    view:
+      - "pm"
+      - "arch"
+      - "qa"
+      - "engineer"
+      - "mike"
+      - "ops"
+      
+  # 配置相关权限
+  config:
+    view:
+      - "pm"
+      - "arch"
+      - "qa"
+      - "engineer"
+      - "mike"
+      - "ops"
+    modify:
+      - "pm"
+      - "arch"
+
+# ============================================================================
+# 治理参数
+# ============================================================================
+
+parameters:
+  # 提案参数 (B-02 治理引擎-提案系统)
+  proposal:
+    maxActiveProposals: 5
+    proposalTimeoutMinutes: 30
+    minProposalDescriptionLength: 10
+    # 仅 PM 可创建提案
+    allowedCreators:
+      - "pm"
+    # 标题长度限制
+    titleMaxLength: 200
+    # 描述长度限制
+    descriptionMaxLength: 5000
+    # 过期检查间隔（秒）
+    expireCheckIntervalSeconds: 30
+    
+  # 投票参数
+  voting:
+    voteTimeoutMinutes: 30
+    minVoters: 2
+    quorumRatio: 0.5
+    # 最小赞成比例（0.5 = 50%）
+    minApproveRatio: 0.5
+    # 允许弃权
+    allowAbstain: true
+    # 可投票角色
+    allowedVoters:
+      - "pm"
+      - "arch"
+      - "qa"
+      - "engineer"
+      - "mike"
+      - "system"
+    
+  # 执行参数
+  execution:
+    executionTimeoutMinutes: 60
+    maxRetryAttempts: 3
+    rollbackOnFailure: true
+    
+  # 监督参数
+  oversight:
+    checkIntervalMinutes: 5
+    alertThresholdMinutes: 10
+
+# ============================================================================
+# B-02 提案系统状态定义
+# ============================================================================
+
+proposalStates:
+  - id: "pending"
+    name: "Pending"
+    nameCn: "待处理"
+    description: "提案已创建，等待投票开始"
+    
+  - id: "voting"
+    name: "Voting"
+    nameCn: "投票中"
+    description: "提案正在投票中"
+    
+  - id: "approved"
+    name: "Approved"
+    nameCn: "已通过"
+    description: "提案已获通过"
+    
+  - id: "rejected"
+    name: "Rejected"
+    nameCn: "已拒绝"
+    description: "提案已被拒绝"
+    
+  - id: "expired"
+    name: "Expired"
+    nameCn: "已过期"
+    description: "提案已过期，未达成决议"
+
+# ============================================================================
+# 提案状态流转规则
+# ============================================================================
+
+proposalTransitions:
+  # pending -> voting: 提案正式开始投票
+  - from: "pending"
+    to: "voting"
+    auto: true
+    description: "提案创建后自动进入投票状态"
+    
+  # voting -> approved: 投票通过
+  - from: "voting"
+    to: "approved"
+    condition: "votes_reached_and_approved"
+    description: "达到最小投票数且赞成率达标"
+    
+  # voting -> rejected: 投票拒绝
+  - from: "voting"
+    to: "rejected"
+    condition: "votes_reached_and_rejected"
+    description: "达到最小投票数但赞成率不达标"
+    
+  # voting -> expired: 时间过期
+  - from: "voting"
+    to: "expired"
+    condition: "timeout"
+    description: "超过30分钟投票期未达成决议"
+    
+  # pending -> expired: 创建后未开始投票即过期（异常情况）
+  - from: "pending"
+    to: "expired"
+    condition: "timeout"
+    description: "提案超时未处理"
+
+# ============================================================================
+# 通知配置
+# ============================================================================
+
+notifications:
+  events:
+    - event: "proposal.created"
+      channels: ["websocket", "email"]
+      recipients: ["all"]
+      
+    - event: "proposal.voted"
+      channels: ["websocket"]
+      recipients: ["proposer", "voters"]
+      
+    - event: "proposal.approved"
+      channels: ["websocket", "email"]
+      recipients: ["all"]
+      
+    - event: "proposal.rejected"
+      channels: ["websocket", "email"]
+      recipients: ["proposer", "voters"]
+      
+    - event: "state.changed"
+      channels: ["websocket"]
+      recipients: ["all"]
+      
+    - event: "execution.failed"
+      channels: ["websocket", "email", "sms"]
+      recipients: ["pm", "ops"]

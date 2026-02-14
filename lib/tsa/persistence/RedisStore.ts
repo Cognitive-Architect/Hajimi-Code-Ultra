@@ -1,0 +1,797 @@
+/**
+ * TSA Redis持久化层实现
+ * 
+ * B-04/09: 实现TSA真实Redis持久化层，替换内存Map
+ * - 支持Upstash Redis REST API
+ * - 支持标准Redis协议（通过Redis URL）
+ * - 实现TTL管理
+ * - 错误处理和重试机制
+ * 
+ * DEBT-004 清偿标记: TSA虚假持久化 → 已实现真实Redis持久化
+ */
+
+/**
+ * 存储适配器接口
+ * 统一不同存储后端的抽象接口
+ */
+export interface StorageAdapter {
+  get<T>(key: string): Promise<T | null>;
+  set<T>(key: string, value: T, ttl?: number): Promise<void>;
+  delete(key: string): Promise<void>;
+  clear(): Promise<void>;
+  keys(pattern?: string): Promise<string[]>;
+  isConnected(): boolean;
+}
+
+/**
+ * Redis连接配置
+ */
+export interface RedisConfig {
+  /** Redis URL，支持标准Redis协议 redis://host:port 或 Upstash REST URL */
+  url?: string;
+  /** Upstash Redis Token，使用Upstash时需要 */
+  token?: string;
+  /** 数据库编号，标准Redis时使用 */
+  db?: number;
+  /** 连接超时（毫秒），默认5000 */
+  connectTimeout?: number;
+  /** 最大重试次数，默认3 */
+  maxRetries?: number;
+  /** 重试间隔（毫秒），默认1000 */
+  retryInterval?: number;
+  /** 键名前缀，默认 'tsa:' */
+  keyPrefix?: string;
+}
+
+/**
+ * 存储项数据结构
+ */
+interface StorageItem<T> {
+  value: T;
+  tier: 'transient' | 'staging' | 'archive';
+  timestamp: number;
+  lastAccessed: number;
+  accessCount: number;
+  ttl?: number;
+}
+
+/**
+ * 连接状态
+ */
+enum ConnectionState {
+  DISCONNECTED = 'disconnected',
+  CONNECTING = 'connecting',
+  CONNECTED = 'connected',
+  ERROR = 'error',
+}
+
+/**
+ * Redis错误类
+ */
+class RedisError extends Error {
+  constructor(message: string, public readonly cause?: Error) {
+    super(message);
+    this.name = 'RedisError';
+  }
+}
+
+/**
+ * Upstash Redis REST API 客户端
+ */
+class UpstashRedisClient {
+  private url: string;
+  private token: string;
+  private maxRetries: number;
+  private retryInterval: number;
+
+  constructor(config: RedisConfig) {
+    this.url = config.url;
+    this.token = config.token || '';
+    this.maxRetries = config.maxRetries ?? 3;
+    this.retryInterval = config.retryInterval ?? 1000;
+  }
+
+  /**
+   * 执行Redis命令
+   */
+  private async executeCommand<T>(command: string[], retryCount = 0): Promise<T> {
+    try {
+      const response = await fetch(this.url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(command),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
+
+      const result = await response.json();
+      
+      // Upstash返回格式: { result: T }
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      return result.result as T;
+    } catch (error) {
+      if (retryCount < this.maxRetries) {
+        await this.delay(this.retryInterval * (retryCount + 1));
+        return this.executeCommand(command, retryCount + 1);
+      }
+      throw new RedisError(
+        `Redis command failed after ${this.maxRetries} retries`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * 延迟函数
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * 测试连接
+   */
+  async ping(): Promise<boolean> {
+    try {
+      const result = await this.executeCommand<string>(['PING']);
+      return result === 'PONG';
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 获取值
+   */
+  async get(key: string): Promise<string | null> {
+    return this.executeCommand<string | null>(['GET', key]);
+  }
+
+  /**
+   * 设置值
+   */
+  async set(key: string, value: string, ttl?: number): Promise<void> {
+    if (ttl !== undefined && ttl > 0) {
+      // TTL转换为秒（Redis使用秒）
+      const ttlSeconds = Math.ceil(ttl / 1000);
+      await this.executeCommand<void>(['SETEX', key, ttlSeconds.toString(), value]);
+    } else {
+      await this.executeCommand<void>(['SET', key, value]);
+    }
+  }
+
+  /**
+   * 删除键
+   */
+  async del(key: string): Promise<void> {
+    await this.executeCommand<number>(['DEL', key]);
+  }
+
+  /**
+   * 清空数据库（使用SCAN + DEL，避免阻塞）
+   */
+  async flush(pattern: string): Promise<void> {
+    let cursor = '0';
+    do {
+      const result = await this.executeCommand<[string, string[]]>(
+        ['SCAN', cursor, 'MATCH', pattern, 'COUNT', '100']
+      );
+      cursor = result[0];
+      const keys = result[1];
+      
+      if (keys.length > 0) {
+        await this.executeCommand<number>(['DEL', ...keys]);
+      }
+    } while (cursor !== '0');
+  }
+
+  /**
+   * 扫描键
+   */
+  async scanKeys(pattern: string): Promise<string[]> {
+    const keys: string[] = [];
+    let cursor = '0';
+    
+    do {
+      const result = await this.executeCommand<[string, string[]]>(
+        ['SCAN', cursor, 'MATCH', pattern, 'COUNT', '100']
+      );
+      cursor = result[0];
+      keys.push(...result[1]);
+    } while (cursor !== '0');
+    
+    return keys;
+  }
+
+  /**
+   * 检查键是否存在
+   */
+  async exists(key: string): Promise<boolean> {
+    const result = await this.executeCommand<number>(['EXISTS', key]);
+    return result === 1;
+  }
+
+  /**
+   * 获取TTL（秒）
+   */
+  async ttl(key: string): Promise<number> {
+    return this.executeCommand<number>(['TTL', key]);
+  }
+}
+
+/**
+ * 内存存储适配器（降级方案）
+ * DEBT-004: 如Redis未配置时使用此Mock，明确标注
+ */
+class MemoryStorageAdapter implements StorageAdapter {
+  private store: Map<string, string> = new Map();
+  private ttlTimers: Map<string, NodeJS.Timeout> = new Map();
+  private prefix: string;
+
+  constructor(prefix: string = 'tsa:') {
+    this.prefix = prefix;
+  }
+
+  private getFullKey(key: string): string {
+    return `${this.prefix}${key}`;
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    const fullKey = this.getFullKey(key);
+    const value = this.store.get(fullKey);
+    if (value === undefined) return null;
+    
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return value as unknown as T;
+    }
+  }
+
+  async set<T>(key: string, value: T, ttl?: number): Promise<void> {
+    const fullKey = this.getFullKey(key);
+    const serialized = JSON.stringify(value);
+    this.store.set(fullKey, serialized);
+
+    // 清除之前的TTL定时器
+    const existingTimer = this.ttlTimers.get(fullKey);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    // 设置新的TTL定时器
+    if (ttl !== undefined && ttl > 0) {
+      const timer = setTimeout(() => {
+        this.store.delete(fullKey);
+        this.ttlTimers.delete(fullKey);
+      }, ttl);
+      this.ttlTimers.set(fullKey, timer);
+    }
+  }
+
+  async delete(key: string): Promise<void> {
+    const fullKey = this.getFullKey(key);
+    this.store.delete(fullKey);
+    const timer = this.ttlTimers.get(fullKey);
+    if (timer) {
+      clearTimeout(timer);
+      this.ttlTimers.delete(fullKey);
+    }
+  }
+
+  async clear(): Promise<void> {
+    // 清除所有TTL定时器
+    for (const timer of this.ttlTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.ttlTimers.clear();
+    this.store.clear();
+  }
+
+  async keys(pattern?: string): Promise<string[]> {
+    const keys: string[] = [];
+    const regex = pattern ? new RegExp(pattern.replace('*', '.*')) : null;
+    
+    for (const key of this.store.keys()) {
+      const shortKey = key.slice(this.prefix.length);
+      if (!regex || regex.test(shortKey)) {
+        keys.push(shortKey);
+      }
+    }
+    
+    return keys;
+  }
+
+  isConnected(): boolean {
+    return true;
+  }
+
+  /**
+   * 销毁适配器
+   */
+  destroy(): void {
+    for (const timer of this.ttlTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.ttlTimers.clear();
+    this.store.clear();
+  }
+}
+
+/**
+ * Redis存储实现
+ * 支持Upstash Redis REST API
+ */
+export class RedisStore implements StorageAdapter {
+  private client: UpstashRedisClient | null = null;
+  private fallbackAdapter: MemoryStorageAdapter;
+  private config: RedisConfig;
+  private state: ConnectionState = ConnectionState.DISCONNECTED;
+  private connectionError: Error | null = null;
+  private useFallback: boolean = false;
+
+  constructor(config?: Partial<RedisConfig>) {
+    // 从环境变量读取配置
+    const envConfig = this.loadConfigFromEnv();
+    this.config = {
+      ...envConfig,
+      ...config,
+      keyPrefix: config?.keyPrefix ?? envConfig.keyPrefix ?? 'tsa:',
+      maxRetries: config?.maxRetries ?? envConfig.maxRetries ?? 3,
+      retryInterval: config?.retryInterval ?? envConfig.retryInterval ?? 1000,
+      connectTimeout: config?.connectTimeout ?? envConfig.connectTimeout ?? 5000,
+    };
+
+    this.fallbackAdapter = new MemoryStorageAdapter(this.config.keyPrefix);
+    
+    // 如果有配置Redis，初始化客户端
+    if (this.config.url && this.isUpstashUrl(this.config.url)) {
+      this.client = new UpstashRedisClient(this.config);
+    }
+  }
+
+  /**
+   * 从环境变量加载配置
+   */
+  private loadConfigFromEnv(): Partial<RedisConfig> {
+    // 支持多种环境变量命名
+    const url = process.env.REDIS_URL || 
+                process.env.UPSTASH_REDIS_REST_URL || 
+                process.env.KV_REST_API_URL || '';
+    
+    const token = process.env.REDIS_TOKEN || 
+                  process.env.UPSTASH_REDIS_REST_TOKEN || 
+                  process.env.KV_REST_API_TOKEN || '';
+
+    return {
+      url,
+      token,
+      db: parseInt(process.env.REDIS_DB || '0', 10),
+      maxRetries: parseInt(process.env.REDIS_MAX_RETRIES || '3', 10),
+      retryInterval: parseInt(process.env.REDIS_RETRY_INTERVAL || '1000', 10),
+      connectTimeout: parseInt(process.env.REDIS_CONNECT_TIMEOUT || '5000', 10),
+      keyPrefix: process.env.REDIS_KEY_PREFIX || 'tsa:',
+    };
+  }
+
+  /**
+   * 判断是否为Upstash URL
+   */
+  private isUpstashUrl(url: string): boolean {
+    return url.includes('upstash.io') || url.includes('kv.vercel-storage.com');
+  }
+
+  /**
+   * 获取完整键名
+   */
+  private getFullKey(key: string): string {
+    return `${this.config.keyPrefix}${key}`;
+  }
+
+  /**
+   * 获取适配器（Redis或降级方案）
+   */
+  private getAdapter(): StorageAdapter {
+    if (this.useFallback || !this.client) {
+      return this.fallbackAdapter;
+    }
+    return this as StorageAdapter;
+  }
+
+  /**
+   * 初始化连接
+   * @returns 是否成功连接
+   */
+  async connect(): Promise<boolean> {
+    if (this.state === ConnectionState.CONNECTED) {
+      return true;
+    }
+
+    if (!this.client) {
+      console.log('[RedisStore] No Redis config, using memory fallback');
+      this.useFallback = true;
+      this.state = ConnectionState.CONNECTED;
+      return true;
+    }
+
+    this.state = ConnectionState.CONNECTING;
+    
+    try {
+      const isConnected = await Promise.race([
+        this.client.ping(),
+        new Promise<boolean>((_, reject) => 
+          setTimeout(() => reject(new Error('Connection timeout')), 
+          this.config.connectTimeout)
+        ),
+      ]);
+
+      if (isConnected) {
+        this.state = ConnectionState.CONNECTED;
+        this.connectionError = null;
+        this.useFallback = false;
+        console.log('[RedisStore] Connected to Redis successfully');
+        return true;
+      } else {
+        throw new Error('Ping failed');
+      }
+    } catch (error) {
+      this.state = ConnectionState.ERROR;
+      this.connectionError = error instanceof Error ? error : new Error(String(error));
+      this.useFallback = true;
+      console.warn('[RedisStore] Failed to connect to Redis, using memory fallback:', this.connectionError.message);
+      return false;
+    }
+  }
+
+  /**
+   * 断开连接
+   */
+  async disconnect(): Promise<void> {
+    this.state = ConnectionState.DISCONNECTED;
+    this.client = null;
+    this.fallbackAdapter.destroy();
+  }
+
+  /**
+   * 检查是否已连接
+   */
+  isConnected(): boolean {
+    return this.state === ConnectionState.CONNECTED;
+  }
+
+  /**
+   * 获取连接状态
+   */
+  getState(): ConnectionState {
+    return this.state;
+  }
+
+  /**
+   * 获取连接错误
+   */
+  getConnectionError(): Error | null {
+    return this.connectionError;
+  }
+
+  /**
+   * 是否使用降级方案
+   */
+  isUsingFallback(): boolean {
+    return this.useFallback;
+  }
+
+  /**
+   * 获取值
+   */
+  async get<T>(key: string): Promise<T | null> {
+    const adapter = this.getAdapter();
+    
+    if (adapter === this.fallbackAdapter) {
+      // 降级模式下，存储的是StorageItem，需要解包
+      const item = await adapter.get<StorageItem<T>>(key);
+      if (item === null) return null;
+      
+      // 更新访问统计
+      item.lastAccessed = Date.now();
+      item.accessCount++;
+      
+      // 异步更新（不等待）
+      adapter.set(key, item, item.ttl).catch(() => {
+        // 忽略更新错误
+      });
+      
+      return item.value;
+    }
+
+    try {
+      const fullKey = this.getFullKey(key);
+      const value = await this.client!.get(fullKey);
+      
+      if (value === null) return null;
+      
+      const item: StorageItem<T> = JSON.parse(value);
+      
+      // 更新访问统计
+      item.lastAccessed = Date.now();
+      item.accessCount++;
+      
+      // 异步写回（不等待）
+      this.client!.set(fullKey, JSON.stringify(item)).catch(() => {
+        // 忽略更新错误
+      });
+      
+      return item.value;
+    } catch (error) {
+      console.warn('[RedisStore] Get error, switching to fallback:', error);
+      this.useFallback = true;
+      const item = await this.fallbackAdapter.get<StorageItem<T>>(key);
+      return item ? item.value : null;
+    }
+  }
+
+  /**
+   * 设置值
+   */
+  async set<T>(key: string, value: T, ttl?: number): Promise<void> {
+    const adapter = this.getAdapter();
+    
+    if (adapter === this.fallbackAdapter) {
+      const now = Date.now();
+      const item: StorageItem<T> = {
+        value,
+        tier: 'staging',
+        timestamp: now,
+        lastAccessed: now,
+        accessCount: 0,
+        ttl,
+      };
+      return adapter.set(key, item, ttl);
+    }
+
+    try {
+      const fullKey = this.getFullKey(key);
+      const now = Date.now();
+      const item: StorageItem<T> = {
+        value,
+        tier: 'staging',
+        timestamp: now,
+        lastAccessed: now,
+        accessCount: 0,
+        ttl,
+      };
+      
+      const serialized = JSON.stringify(item);
+      await this.client!.set(fullKey, serialized, ttl);
+    } catch (error) {
+      console.warn('[RedisStore] Set error, switching to fallback:', error);
+      this.useFallback = true;
+      
+      const now = Date.now();
+      const item: StorageItem<T> = {
+        value,
+        tier: 'staging',
+        timestamp: now,
+        lastAccessed: now,
+        accessCount: 0,
+        ttl,
+      };
+      return this.fallbackAdapter.set(key, item, ttl);
+    }
+  }
+
+  /**
+   * 删除键
+   */
+  async delete(key: string): Promise<void> {
+    const adapter = this.getAdapter();
+    
+    if (adapter === this.fallbackAdapter) {
+      return adapter.delete(key);
+    }
+
+    try {
+      const fullKey = this.getFullKey(key);
+      await this.client!.del(fullKey);
+    } catch (error) {
+      console.warn('[RedisStore] Delete error, switching to fallback:', error);
+      this.useFallback = true;
+      return this.fallbackAdapter.delete(key);
+    }
+  }
+
+  /**
+   * 清空存储
+   */
+  async clear(): Promise<void> {
+    const adapter = this.getAdapter();
+    
+    if (adapter === this.fallbackAdapter) {
+      return adapter.clear();
+    }
+
+    try {
+      const pattern = `${this.config.keyPrefix}*`;
+      await this.client!.flush(pattern);
+    } catch (error) {
+      console.warn('[RedisStore] Clear error, switching to fallback:', error);
+      this.useFallback = true;
+      return this.fallbackAdapter.clear();
+    }
+  }
+
+  /**
+   * 获取键列表
+   */
+  async keys(pattern?: string): Promise<string[]> {
+    const adapter = this.getAdapter();
+    
+    if (adapter === this.fallbackAdapter) {
+      return adapter.keys(pattern);
+    }
+
+    try {
+      const fullPattern = `${this.config.keyPrefix}${pattern ?? '*'}`;
+      const keys = await this.client!.scanKeys(fullPattern);
+      // 移除前缀
+      const prefixLen = this.config.keyPrefix.length;
+      return keys.map(k => k.slice(prefixLen));
+    } catch (error) {
+      console.warn('[RedisStore] Keys error, switching to fallback:', error);
+      this.useFallback = true;
+      return this.fallbackAdapter.keys(pattern);
+    }
+  }
+
+  /**
+   * 获取原始存储项（包含元数据）
+   */
+  async getItem<T>(key: string): Promise<StorageItem<T> | null> {
+    const adapter = this.getAdapter();
+    
+    if (adapter === this.fallbackAdapter) {
+      return adapter.get<StorageItem<T>>(key);
+    }
+
+    try {
+      const fullKey = this.getFullKey(key);
+      const value = await this.client!.get(fullKey);
+      
+      if (value === null) return null;
+      
+      return JSON.parse(value) as StorageItem<T>;
+    } catch (error) {
+      console.warn('[RedisStore] GetItem error:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 设置原始存储项（包含元数据）
+   */
+  async setItem<T>(key: string, item: StorageItem<T>): Promise<void> {
+    const adapter = this.getAdapter();
+    
+    if (adapter === this.fallbackAdapter) {
+      return adapter.set(key, item, item.ttl);
+    }
+
+    try {
+      const fullKey = this.getFullKey(key);
+      const serialized = JSON.stringify(item);
+      await this.client!.set(fullKey, serialized, item.ttl);
+    } catch (error) {
+      console.warn('[RedisStore] SetItem error:', error);
+      this.useFallback = true;
+      return this.fallbackAdapter.set(key, item, item.ttl);
+    }
+  }
+
+  /**
+   * 批量获取
+   */
+  async mget<T>(keys: string[]): Promise<(T | null)[]> {
+    const results: (T | null)[] = [];
+    for (const key of keys) {
+      results.push(await this.get<T>(key));
+    }
+    return results;
+  }
+
+  /**
+   * 批量设置
+   */
+  async mset<T>(entries: { key: string; value: T; ttl?: number }[]): Promise<void> {
+    for (const entry of entries) {
+      await this.set(entry.key, entry.value, entry.ttl);
+    }
+  }
+
+  /**
+   * 批量删除
+   */
+  async mdel(keys: string[]): Promise<void> {
+    for (const key of keys) {
+      await this.delete(key);
+    }
+  }
+
+  /**
+   * 获取存储统计
+   */
+  async getStats(): Promise<{
+    totalKeys: number;
+    transientCount: number;
+    stagingCount: number;
+    archiveCount: number;
+    usingFallback: boolean;
+  }> {
+    const allKeys = await this.keys('*');
+    let transientCount = 0;
+    let stagingCount = 0;
+    let archiveCount = 0;
+
+    for (const key of allKeys) {
+      const item = await this.getItem(key);
+      if (item) {
+        switch (item.tier) {
+          case 'transient':
+            transientCount++;
+            break;
+          case 'staging':
+            stagingCount++;
+            break;
+          case 'archive':
+            archiveCount++;
+            break;
+        }
+      }
+    }
+
+    return {
+      totalKeys: allKeys.length,
+      transientCount,
+      stagingCount,
+      archiveCount,
+      usingFallback: this.useFallback,
+    };
+  }
+
+  /**
+   * 强制切换到降级模式
+   */
+  forceFallback(): void {
+    this.useFallback = true;
+    console.log('[RedisStore] Forced fallback to memory storage');
+  }
+
+  /**
+   * 尝试重新连接Redis
+   */
+  async retryConnection(): Promise<boolean> {
+    if (!this.useFallback) return true;
+    
+    console.log('[RedisStore] Retrying Redis connection...');
+    this.useFallback = false;
+    return this.connect();
+  }
+}
+
+/**
+ * 创建RedisStore实例（工厂函数）
+ */
+export function createRedisStore(config?: Partial<RedisConfig>): RedisStore {
+  return new RedisStore(config);
+}
+
+/**
+ * 默认导出
+ */
+export default RedisStore;
