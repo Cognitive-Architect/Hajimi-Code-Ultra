@@ -1,0 +1,242 @@
+{
+  "timestamp": "2026-02-14T06:35:45.398Z",
+  "environment": {
+    "node": "v24.11.1",
+    "platform": "win32"
+  },
+  "redisStatus": {
+    "initial": {
+      "running": true,
+      "name": "hajimi-redis",
+      "status": "Up 4 minutes",
+      "ports": "0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp"
+    },
+    "final": {
+      "running": true,
+      "name": "hajimi-redis",
+      "status": "Up 4 seconds",
+      "ports": "0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp"
+    }
+  },
+  "tests": [
+    {
+      "name": "RES-001: Redis连接检测（PING/PONG）",
+      "passed": true,
+      "details": {
+        "response": "PONG"
+      },
+      "timestamp": 1771050945993
+    },
+    {
+      "name": "RES-002: Redis容器停止模拟",
+      "passed": true,
+      "details": {
+        "stopResult": {
+          "success": true
+        },
+        "currentStatus": {
+          "running": false
+        }
+      },
+      "timestamp": 1771050950197
+    },
+    {
+      "name": "RES-002: Redis不可达确认",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050950330
+    },
+    {
+      "name": "RES-003: Redis容器启动恢复",
+      "passed": true,
+      "details": {
+        "startResult": {
+          "success": true
+        },
+        "currentStatus": {
+          "running": true,
+          "name": "hajimi-redis",
+          "status": "Up 3 seconds",
+          "ports": "0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp"
+        }
+      },
+      "timestamp": 1771050954103
+    },
+    {
+      "name": "RES-003: Redis连接恢复（PING/PONG）",
+      "passed": true,
+      "details": {
+        "response": "PONG"
+      },
+      "timestamp": 1771050954406
+    },
+    {
+      "name": "代码审计: TierLevel枚举定义",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954620
+    },
+    {
+      "name": "代码审计: Redis层(Tier 1)",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954620
+    },
+    {
+      "name": "代码审计: IndexedDB层(Tier 2)",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954620
+    },
+    {
+      "name": "代码审计: Memory层(Tier 3)",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954620
+    },
+    {
+      "name": "代码审计: 自动降级逻辑",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954620
+    },
+    {
+      "name": "代码审计: 自动恢复逻辑",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954620
+    },
+    {
+      "name": "代码审计: 故障转移方法",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954620
+    },
+    {
+      "name": "代码审计: 恢复检测方法",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954620
+    },
+    {
+      "name": "代码审计: 重试机制",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954620
+    },
+    {
+      "name": "代码审计: 事件通知机制",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954620
+    },
+    {
+      "name": "RES审计: 三层存储层定义完整",
+      "passed": true,
+      "details": {
+        "tiers": [
+          "Redis",
+          "IndexedDB",
+          "Memory"
+        ]
+      },
+      "timestamp": 1771050954621
+    },
+    {
+      "name": "RES审计: 错误处理机制存在",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954621
+    },
+    {
+      "name": "RedisStore审计: StorageAdapter接口",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954621
+    },
+    {
+      "name": "RedisStore审计: 连接超时配置",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954621
+    },
+    {
+      "name": "RedisStore审计: 重试机制",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954621
+    },
+    {
+      "name": "RedisStore审计: 降级到内存存储",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954621
+    },
+    {
+      "name": "RedisStore审计: 连接状态检测",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954622
+    },
+    {
+      "name": "RedisStore审计: 健康检查",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954622
+    },
+    {
+      "name": "IndexedDBStore审计: StorageAdapter实现",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954622
+    },
+    {
+      "name": "IndexedDBStore审计: TTL管理",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954622
+    },
+    {
+      "name": "IndexedDBStore审计: 健康检查",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954622
+    },
+    {
+      "name": "IndexedDBStore审计: 定期清理任务",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954622
+    },
+    {
+      "name": "IndexedDBStore审计: 错误处理",
+      "passed": true,
+      "details": {},
+      "timestamp": 1771050954622
+    }
+  ],
+  "summary": {
+    "total": 28,
+    "passed": 28,
+    "failed": 0,
+    "allGatesPassed": true
+  },
+  "gateStatus": {
+    "RES-001": {
+      "name": "Redis故障检测（连接超时/拒绝）",
+      "passed": true
+    },
+    "RES-002": {
+      "name": "自动降级到IndexedDB/Memory",
+      "passed": true
+    },
+    "RES-003": {
+      "name": "Redis恢复后自动升级",
+      "passed": true
+    },
+    "RES-004": {
+      "name": "全层失败优雅报错",
+      "passed": true
+    }
+  }
+}
