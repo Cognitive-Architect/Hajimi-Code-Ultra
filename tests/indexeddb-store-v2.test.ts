@@ -28,13 +28,14 @@ class MockIDBRequest {
   _success(result?: unknown): void {
     if (result !== undefined) this.result = result;
     this.readyState = 'done';
-    setTimeout(() => this.onsuccess?.(), 0);
+    // FIX: 使用 Promise.resolve() 确保异步但可等待
+    Promise.resolve().then(() => this.onsuccess?.());
   }
 
   _error(error: Error): void {
     this.error = error;
     this.readyState = 'done';
-    setTimeout(() => this.onerror?.(), 0);
+    Promise.resolve().then(() => this.onerror?.());
   }
 }
 
@@ -59,7 +60,7 @@ class MockIDBTransaction {
   }
 
   _complete(): void {
-    setTimeout(() => this.oncomplete?.(), 0);
+    Promise.resolve().then(() => this.oncomplete?.());
   }
 }
 
@@ -170,10 +171,35 @@ class MockIDBIndex {
   }
 }
 
+// Mock DOMStringList with contains method
+class MockDOMStringList {
+  private items: string[] = [];
+
+  get length(): number {
+    return this.items.length;
+  }
+
+  item(index: number): string | null {
+    return this.items[index] ?? null;
+  }
+
+  contains(str: string): boolean {
+    return this.items.includes(str);
+  }
+
+  push(name: string): void {
+    this.items.push(name);
+  }
+
+  [Symbol.iterator](): Iterator<string> {
+    return this.items[Symbol.iterator]();
+  }
+}
+
 class MockIDBDatabase {
   name: string;
   version: number;
-  objectStoreNames: DOMStringList = [] as unknown as DOMStringList;
+  objectStoreNames: MockDOMStringList = new MockDOMStringList();
   private stores: Map<string, MockIDBObjectStore> = new Map();
 
   constructor(name: string, version: number) {
@@ -185,14 +211,14 @@ class MockIDBDatabase {
     const store = new MockIDBObjectStore(name, null as unknown as MockIDBTransaction);
     if (options?.keyPath) store.keyPath = options.keyPath;
     this.stores.set(name, store);
-    (this.objectStoreNames as unknown as string[]).push(name);
+    this.objectStoreNames.push(name);
     return store;
   }
 
   transaction(storeNames: string | string[], mode?: IDBTransactionMode): MockIDBTransaction {
     const names = Array.isArray(storeNames) ? storeNames : [storeNames];
     const transaction = new MockIDBTransaction(this, names, mode);
-    setTimeout(() => transaction._complete(), 0);
+    Promise.resolve().then(() => transaction._complete());
     return transaction;
   }
 
@@ -214,12 +240,17 @@ class MockIDBOpenDBRequest extends MockIDBRequest {
 const mockDatabases: Map<string, MockIDBDatabase> = new Map();
 let mockQuotaExceeded = false;
 
+// 辅助函数：延迟执行（使用微任务队列）
+const delay = (fn: () => void): void => {
+  Promise.resolve().then(fn);
+};
+
 const mockIndexedDB = {
   open: (name: string, version?: number): MockIDBOpenDBRequest => {
     const request = new MockIDBOpenDBRequest();
     const dbVersion = version || 1;
     
-    setTimeout(() => {
+    delay(() => {
       let db = mockDatabases.get(name);
       let oldVersion = 0;
       
@@ -233,16 +264,21 @@ const mockIndexedDB = {
         }
       }
 
+      // FIX: 在触发 onupgradeneeded 前设置 result，使 event.target.result 可用
+      request.result = db;
+
       // 触发 onupgradeneeded
       if (oldVersion < dbVersion) {
         request.onupgradeneeded?.({
           oldVersion,
           newVersion: dbVersion,
+          target: request,
+          currentTarget: request,
         } as unknown as IDBVersionChangeEvent);
       }
 
       request._success(db);
-    }, 0);
+    });
 
     return request;
   },
@@ -250,7 +286,7 @@ const mockIndexedDB = {
   deleteDatabase: (name: string): MockIDBRequest => {
     mockDatabases.delete(name);
     const request = new MockIDBRequest();
-    setTimeout(() => request._success(undefined), 0);
+    Promise.resolve().then(() => request._success(undefined));
     return request;
   },
 

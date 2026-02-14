@@ -254,6 +254,11 @@ class TieredStorageArchitecture {
       return;
     }
 
+    // FIX: 如果 fallbackManager 不存在（如 destroy 后），重新初始化
+    if (!this.fallbackManager) {
+      this.initializeFallbackManager();
+    }
+
     // B-05/09: 初始化三层韧性存储
     if (this.fallbackManager) {
       const initialized = await this.fallbackManager.initialize();
@@ -604,6 +609,8 @@ class TieredStorageArchitecture {
     // B-05/09: 关闭三层韧性存储
     if (this.fallbackManager) {
       await this.fallbackManager.close();
+      // FIX: 清除 fallbackManager 引用，下次 init 时重新创建
+      this.fallbackManager = undefined;
     }
     
     this.stores.clear();
