@@ -41,9 +41,10 @@ exports.ProjectManager = void 0;
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs/promises"));
 class ProjectManager {
-    constructor() {
+    constructor(dbManager) {
         this.recentProjects = [];
         this.maxRecentProjects = 10;
+        this.dbManager = dbManager;
     }
     /**
      * 打开项目
@@ -119,6 +120,36 @@ class ProjectManager {
      */
     removeFromRecent(projectId) {
         this.recentProjects = this.recentProjects.filter((p) => p.id !== projectId);
+    }
+    /**
+     * 关闭项目
+     */
+    async closeProject(projectId) {
+        // 清理项目相关资源
+        console.log(`[ProjectManager] Closed project: ${projectId}`);
+    }
+    /**
+     * 创建新项目
+     */
+    async createProject(name, projectPath) {
+        // 创建项目目录
+        await fs.mkdir(projectPath, { recursive: true });
+        const project = {
+            id: this.generateProjectId(projectPath),
+            name,
+            path: projectPath,
+            lastOpened: new Date(),
+            createdAt: new Date(),
+            isFavorite: false,
+            settings: {
+                excludePatterns: ['node_modules', '.git', '.next', 'dist'],
+                gitEnabled: true,
+                autoSave: true,
+            },
+        };
+        this.addToRecentProjects(project);
+        console.log(`[ProjectManager] Created project: ${name}`);
+        return project;
     }
 }
 exports.ProjectManager = ProjectManager;

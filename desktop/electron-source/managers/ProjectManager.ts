@@ -25,6 +25,11 @@ export interface ProjectSettings {
 export class ProjectManager {
   private recentProjects: Project[] = [];
   private maxRecentProjects = 10;
+  private dbManager: any;
+
+  constructor(dbManager?: any) {
+    this.dbManager = dbManager;
+  }
 
   /**
    * 打开项目
@@ -116,5 +121,39 @@ export class ProjectManager {
     this.recentProjects = this.recentProjects.filter(
       (p) => p.id !== projectId
     );
+  }
+
+  /**
+   * 关闭项目
+   */
+  async closeProject(projectId: string): Promise<void> {
+    // 清理项目相关资源
+    console.log(`[ProjectManager] Closed project: ${projectId}`);
+  }
+
+  /**
+   * 创建新项目
+   */
+  async createProject(name: string, projectPath: string): Promise<Project> {
+    // 创建项目目录
+    await fs.mkdir(projectPath, { recursive: true });
+    
+    const project: Project = {
+      id: this.generateProjectId(projectPath),
+      name,
+      path: projectPath,
+      lastOpened: new Date(),
+      createdAt: new Date(),
+      isFavorite: false,
+      settings: {
+        excludePatterns: ['node_modules', '.git', '.next', 'dist'],
+        gitEnabled: true,
+        autoSave: true,
+      },
+    };
+
+    this.addToRecentProjects(project);
+    console.log(`[ProjectManager] Created project: ${name}`);
+    return project;
   }
 }

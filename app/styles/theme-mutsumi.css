@@ -1,0 +1,250 @@
+/**
+ * 客服小祥主题 - 优雅大小姐
+ * Ouroboros Theme System - Mutsumi (Orchestrator)
+ * 
+ * 人设: 优雅大小姐，键盘手，略带疲惫但可靠
+ * 主色: 深紫 #884499
+ * 副色: 浅紫 #AA66BB, 暗紫 #662277
+ */
+
+[data-theme="mutsumi"] {
+  /* === 核心色板 === */
+  --color-primary: #884499;
+  --color-primary-light: #AA66BB;
+  --color-primary-dark: #662277;
+  --color-primary-muted: rgba(136, 68, 153, 0.6);
+  
+  /* === 强调色 === */
+  --color-accent: #C9A0DC;
+  --color-accent-light: #E0C4EC;
+  --color-accent-dark: #A67BB8;
+  
+  /* === 背景系统 === */
+  --color-bg-gradient: linear-gradient(135deg, #1a0b2e 0%, #2d1b4e 50%, #1a0b2e 100%);
+  --color-bg-primary: #1a0b2e;
+  --color-bg-secondary: #2d1b4e;
+  --color-bg-tertiary: #3d2b5e;
+  --color-bg-card: rgba(136, 68, 153, 0.08);
+  --color-bg-card-hover: rgba(136, 68, 153, 0.15);
+  --color-bg-input: rgba(26, 11, 46, 0.8);
+  --color-bg-overlay: rgba(26, 11, 46, 0.95);
+  
+  /* === 卡片与容器 === */
+  --color-card-bg: rgba(136, 68, 153, 0.1);
+  --color-card-border: rgba(136, 68, 153, 0.2);
+  --color-card-shadow: 0 4px 24px rgba(136, 68, 153, 0.15);
+  
+  /* === 边框系统 === */
+  --color-border: rgba(136, 68, 153, 0.3);
+  --color-border-light: rgba(136, 68, 153, 0.15);
+  --color-border-focus: rgba(201, 160, 220, 0.6);
+  
+  /* === 文字系统 === */
+  --color-text-primary: #F8E8FF;
+  --color-text-secondary: #C9A0DC;
+  --color-text-muted: #886699;
+  --color-text-on-primary: #FFFFFF;
+  
+  /* === 字体配置 === */
+  --font-display: 'Georgia', 'Times New Roman', serif;
+  --font-body: system-ui, -apple-system, sans-serif;
+  
+  /* === 状态色 === */
+  --color-success: #66BB6A;
+  --color-warning: #FFB74D;
+  --color-error: #E57373;
+  --color-info: #64B5F6;
+  
+  /* === 动画时间 === */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+  
+  /* === 阴影系统 === */
+  --shadow-sm: 0 2px 8px rgba(136, 68, 153, 0.1);
+  --shadow-md: 0 4px 16px rgba(136, 68, 153, 0.2);
+  --shadow-lg: 0 8px 32px rgba(136, 68, 153, 0.3);
+  --shadow-glow: 0 0 20px rgba(136, 68, 153, 0.4);
+}
+
+/* === 键盘手特色样式 === */
+[data-theme="mutsumi"] .piano-keys {
+  display: flex;
+  gap: 2px;
+  padding: 8px;
+  background: linear-gradient(180deg, #2d1b4e 0%, #1a0b2e 100%);
+  border-radius: 4px 4px 8px 8px;
+  box-shadow: 
+    0 4px 0 #1a0b2e,
+    0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="mutsumi"] .piano-key {
+  position: relative;
+  width: 32px;
+  height: 120px;
+  background: linear-gradient(180deg, #F8E8FF 0%, #E0C4EC 100%);
+  border-radius: 0 0 4px 4px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 
+    0 4px 0 #AA66BB,
+    inset 0 -4px 8px rgba(136, 68, 153, 0.1);
+}
+
+[data-theme="mutsumi"] .piano-key:hover {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F0D4F8 100%);
+  transform: translateY(2px);
+  box-shadow: 
+    0 2px 0 #AA66BB,
+    0 0 16px rgba(201, 160, 220, 0.4);
+}
+
+[data-theme="mutsumi"] .piano-key:active,
+[data-theme="mutsumi"] .piano-key.active {
+  transform: translateY(4px);
+  box-shadow: 
+    0 0 0 #AA66BB,
+    inset 0 4px 8px rgba(136, 68, 153, 0.3);
+  background: linear-gradient(180deg, #E0C4EC 0%, #C9A0DC 100%);
+}
+
+[data-theme="mutsumi"] .piano-key.black {
+  width: 20px;
+  height: 80px;
+  background: linear-gradient(180deg, #2d1b4e 0%, #1a0b2e 100%);
+  margin: 0 -10px;
+  z-index: 1;
+  box-shadow: 
+    0 3px 0 #0a0510,
+    inset 0 -2px 4px rgba(136, 68, 153, 0.2);
+}
+
+[data-theme="mutsumi"] .piano-key.black:hover {
+  background: linear-gradient(180deg, #3d2b5e 0%, #2d1b4e 100%);
+  box-shadow: 
+    0 1px 0 #0a0510,
+    0 0 12px rgba(136, 68, 153, 0.5);
+}
+
+[data-theme="mutsumi"] .piano-key.black:active,
+[data-theme="mutsumi"] .piano-key.black.active {
+  background: linear-gradient(180deg, #1a0b2e 0%, #0a0510 100%);
+  box-shadow: 
+    0 0 0 #0a0510,
+    inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* === 优雅动画效果 === */
+[data-theme="mutsumi"] .elegant-fade-in {
+  animation: mutsumi-fade-in 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="mutsumi"] .elegant-slide-up {
+  animation: mutsumi-slide-up 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes mutsumi-fade-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes mutsumi-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* === 呼吸光晕效果（疲惫但可靠的感觉） === */
+[data-theme="mutsumi"] .gentle-glow {
+  animation: mutsumi-gentle-glow 3s ease-in-out infinite;
+}
+
+@keyframes mutsumi-gentle-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(136, 68, 153, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(136, 68, 153, 0.35);
+  }
+}
+
+/* === 主题专用组件样式 === */
+[data-theme="mutsumi"] .mutsumi-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-card-border);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  transition: all var(--transition-base);
+}
+
+[data-theme="mutsumi"] .mutsumi-card:hover {
+  background: var(--color-bg-card-hover);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme="mutsumi"] .mutsumi-button {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: var(--color-text-on-primary);
+  font-family: var(--font-display);
+  letter-spacing: 0.5px;
+  transition: all var(--transition-fast);
+}
+
+[data-theme="mutsumi"] .mutsumi-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+}
+
+[data-theme="mutsumi"] .mutsumi-input {
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  transition: all var(--transition-fast);
+}
+
+[data-theme="mutsumi"] .mutsumi-input:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px rgba(201, 160, 220, 0.15);
+}
+
+/* === 乐谱/代码展示样式 === */
+[data-theme="mutsumi"] .sheet-music,
+[data-theme="mutsumi"] .code-block {
+  background: linear-gradient(180deg, #1a0b2e 0%, #150824 100%);
+  border-left: 3px solid var(--color-primary);
+  font-family: 'Fira Code', 'Consolas', monospace;
+}
+
+/* === 滚动条主题化 === */
+[data-theme="mutsumi"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="mutsumi"] ::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
+}
+
+[data-theme="mutsumi"] ::-webkit-scrollbar-thumb {
+  background: var(--color-primary-dark);
+  border-radius: 4px;
+}
+
+[data-theme="mutsumi"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}

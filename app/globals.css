@@ -133,6 +133,166 @@
   .animate-pulse-glow {
     animation: pulse-glow 2s ease-in-out infinite;
   }
+
+  /* 悬浮球专用呼吸动画 - scale 0.95-1.0 */
+  @keyframes orb-breathe {
+    0%, 100% { 
+      transform: scale(1);
+    }
+    50% { 
+      transform: scale(0.95);
+    }
+  }
+
+  @keyframes orb-rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes orb-warning {
+    0%, 100% {
+      box-shadow: 0 0 15px rgba(136, 68, 153, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+    }
+  }
+
+  .animate-orb-breathe {
+    animation: orb-breathe 3s ease-in-out infinite;
+  }
+
+  .animate-orb-rotate {
+    animation: orb-rotate 10s linear infinite;
+  }
+
+  .animate-orb-warning {
+    animation: orb-warning 1s ease-in-out infinite;
+  }
+
+  /* ========================================
+     鼓点震动动画 - 压力怪（椎名立希）专属
+     B-02/09 压力怪界面工程师 → 审计界面人格化
+     ======================================== */
+
+  /* 基础鼓点震动 - D级评级触发 */
+  @keyframes drum-beat {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  /* 快速鼓点震动 - 债务发现警告 */
+  @keyframes drum-beat-fast {
+    0%, 100% { transform: translateX(0) scale(1); }
+    25% { transform: translateX(-6px) scale(1.02); }
+    50% { transform: translateX(0) scale(1); }
+    75% { transform: translateX(6px) scale(1.02); }
+  }
+
+  /* 鼓棒敲击效果 */
+  @keyframes drum-stick-hit {
+    0% { transform: rotate(0deg) translateY(0); }
+    30% { transform: rotate(-15deg) translateY(-10px); }
+    50% { transform: rotate(0deg) translateY(2px); }
+    70% { transform: rotate(10deg) translateY(-5px); }
+    100% { transform: rotate(0deg) translateY(0); }
+  }
+
+  /* D级警告样式 - 触发鼓点震动 */
+  .audit-warning {
+    animation: drum-beat 0.3s ease-in-out 3;
+    border-color: #7777AA !important;
+  }
+
+  /* 债务警告样式 - 快速鼓点 */
+  .audit-debt-warning {
+    animation: drum-beat-fast 0.15s ease-in-out 4;
+    border-color: #CC4444 !important;
+    box-shadow: 0 0 20px rgba(204, 68, 68, 0.5);
+  }
+
+  /* 鼓棒敲击类 */
+  .drum-stick-animate {
+    animation: drum-stick-hit 0.4s ease-in-out;
+  }
+}
+
+/* === 键盘手特色样式 - 琴键效果 === */
+@layer components {
+  /* 琴键容器 */
+  .piano-keys {
+    display: flex;
+    gap: 2px;
+    padding: 8px;
+    background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
+    border-radius: 4px 4px 8px 8px;
+    box-shadow: 
+      0 4px 0 #0a0f1a,
+      0 6px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  /* 白键 */
+  .piano-key {
+    position: relative;
+    width: 32px;
+    height: 120px;
+    background: linear-gradient(180deg, #FFFFFF 0%, #E2E8F0 100%);
+    border-radius: 0 0 4px 4px;
+    cursor: pointer;
+    transition: all 150ms ease;
+    box-shadow: 
+      0 4px 0 #94A3B8,
+      inset 0 -4px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  .piano-key:hover {
+    background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
+    transform: translateY(2px);
+    box-shadow: 
+      0 2px 0 #94A3B8,
+      0 0 16px rgba(136, 68, 153, 0.3);
+  }
+
+  .piano-key:active,
+  .piano-key.active {
+    transform: translateY(4px);
+    box-shadow: 
+      0 0 0 #94A3B8,
+      inset 0 4px 8px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(180deg, #E2E8F0 0%, #CBD5E1 100%);
+  }
+
+  /* 黑键 */
+  .piano-key.black {
+    width: 20px;
+    height: 80px;
+    background: linear-gradient(180deg, #334155 0%, #1E293B 100%);
+    margin: 0 -10px;
+    z-index: 1;
+    box-shadow: 
+      0 3px 0 #0F172A,
+      inset 0 -2px 4px rgba(255, 255, 255, 0.1);
+  }
+
+  .piano-key.black:hover {
+    background: linear-gradient(180deg, #475569 0%, #334155 100%);
+    box-shadow: 
+      0 1px 0 #0F172A,
+      0 0 12px rgba(136, 68, 153, 0.4);
+  }
+
+  .piano-key.black:active,
+  .piano-key.black.active {
+    background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
+    box-shadow: 
+      0 0 0 #0F172A,
+      inset 0 2px 4px rgba(0, 0, 0, 0.5);
+  }
 }
 
 /* 滚动条样式 */
@@ -152,4 +312,13 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #64748B;
+}
+
+/* === 主题切换过渡动画 === */
+.theme-transition {
+  transition: 
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }

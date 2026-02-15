@@ -43,16 +43,31 @@ const path = __importStar(require("path"));
 const electron_1 = require("electron");
 class FileManager {
     constructor() {
-        this.trashDirectory = path.join(electron_1.app.getPath('userData'), 'trash');
-        this.ensureTrashDirectory();
+        this.trashDirectory = null;
+        // 延迟初始化，等待app ready
+    }
+    getTrashDirectory() {
+        if (!this.trashDirectory) {
+            this.trashDirectory = path.join(electron_1.app.getPath('userData'), 'trash');
+            this.ensureTrashDirectory();
+        }
+        return this.trashDirectory;
     }
     async ensureTrashDirectory() {
         try {
-            await fs.mkdir(this.trashDirectory, { recursive: true });
+            await fs.mkdir(this.getTrashDirectory(), { recursive: true });
         }
         catch (error) {
             console.error('[FileManager] Failed to create trash directory:', error);
         }
+    }
+    /**
+     * 初始化
+     */
+    async initialize() {
+        // 确保回收站目录存在
+        await this.ensureTrashDirectory();
+        console.log('[FileManager] Initialized');
     }
     /**
      * 读取文件
@@ -101,7 +116,7 @@ class FileManager {
             const fileName = path.basename(filePath);
             const timestamp = Date.now();
             const trashName = `${fileName}.${timestamp}`;
-            const trashPath = path.join(this.trashDirectory, trashName);
+            const trashPath = path.join(this.getTrashDirectory(), trashName);
             // 移动到回收站目录
             await fs.rename(filePath, trashPath);
             return { success: true };
@@ -158,6 +173,33 @@ class FileManager {
         catch (error) {
             return { success: false, error: error.message };
         }
+    }
+    /**
+     * 获取文件状态
+     */
+    async getFileStats(filePath) {
+        try {
+            const stats = await fs.stat(filePath);
+            return {
+                success: true,
+                stats: {
+                    size: stats.size,
+                    isFile: stats.isFile(),
+                    isDirectory: stats.isDirectory(),
+                    createdAt: stats.birthtime,
+                    modifiedAt: stats.mtime,
+                }
+            };
+        }
+        catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    /**
+     * 创建目录（别名）
+     */
+    async createDirectory(dirPath, recursive = true) {
+        await fs.mkdir(dirPath, { recursive });
     }
 }
 exports.FileManager = FileManager;

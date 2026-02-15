@@ -72,7 +72,7 @@ class WindowManager {
             window.webContents.openDevTools();
         }
         else {
-            await window.loadFile(path.join(__dirname, '../../renderer/.next/index.html'));
+            await window.loadFile(path.join(__dirname, '../../renderer/dist/index.html'));
         }
         // 窗口准备好后显示
         window.once('ready-to-show', () => {
@@ -134,6 +134,49 @@ class WindowManager {
             isMaximized: window.isMaximized(),
         };
         this.windowStates.set(window.id, state);
+    }
+    /**
+     * 关闭窗口
+     */
+    closeWindow(windowId) {
+        const window = this.windows.get(windowId);
+        if (window && !window.isDestroyed()) {
+            window.close();
+        }
+    }
+    /**
+     * 聚焦窗口
+     */
+    focusWindow(windowId) {
+        const window = this.windows.get(windowId);
+        if (window && !window.isDestroyed()) {
+            window.focus();
+        }
+    }
+    /**
+     * 最小化窗口
+     */
+    minimizeWindow(windowId) {
+        const window = this.windows.get(windowId);
+        if (window && !window.isDestroyed()) {
+            window.minimize();
+        }
+    }
+    /**
+     * 最大化/恢复窗口
+     */
+    maximizeWindow(windowId) {
+        const window = this.windows.get(windowId);
+        if (!window || window.isDestroyed())
+            return false;
+        if (window.isMaximized()) {
+            window.unmaximize();
+            return false;
+        }
+        else {
+            window.maximize();
+            return true;
+        }
     }
     /**
      * 恢复窗口状态（启动时调用）

@@ -16,19 +16,35 @@ export interface FileEntry {
 }
 
 export class FileManager {
-  private trashDirectory: string;
+  private trashDirectory: string | null = null;
 
   constructor() {
-    this.trashDirectory = path.join(app.getPath('userData'), 'trash');
-    this.ensureTrashDirectory();
+    // 延迟初始化，等待app ready
+  }
+
+  private getTrashDirectory(): string {
+    if (!this.trashDirectory) {
+      this.trashDirectory = path.join(app.getPath('userData'), 'trash');
+      this.ensureTrashDirectory();
+    }
+    return this.trashDirectory;
   }
 
   private async ensureTrashDirectory(): Promise<void> {
     try {
-      await fs.mkdir(this.trashDirectory, { recursive: true });
+      await fs.mkdir(this.getTrashDirectory(), { recursive: true });
     } catch (error) {
       console.error('[FileManager] Failed to create trash directory:', error);
     }
+  }
+
+  /**
+   * 初始化
+   */
+  async initialize(): Promise<void> {
+    // 确保回收站目录存在
+    await this.ensureTrashDirectory();
+    console.log('[FileManager] Initialized');
   }
 
   /**
@@ -82,7 +98,7 @@ export class FileManager {
       const fileName = path.basename(filePath);
       const timestamp = Date.now();
       const trashName = `${fileName}.${timestamp}`;
-      const trashPath = path.join(this.trashDirectory, trashName);
+      const trashPath = path.join(this.getTrashDirectory(), trashName);
       
       // 移动到回收站目录
       await fs.rename(filePath, trashPath);
@@ -145,5 +161,33 @@ export class FileManager {
     } catch (error) {
       return { success: false, error: (error as Error).message };
     }
+  }
+
+  /**
+   * 获取文件状态
+   */
+  async getFileStats(filePath: string): Promise<{ success: boolean; stats?: any; error?: string }> {
+    try {
+      const stats = await fs.stat(filePath);
+      return { 
+        success: true, 
+        stats: {
+          size: stats.size,
+          isFile: stats.isFile(),
+          isDirectory: stats.isDirectory(),
+          createdAt: stats.birthtime,
+          modifiedAt: stats.mtime,
+        }
+      };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  /**
+   * 创建目录（别名）
+   */
+  async createDirectory(dirPath: string, recursive = true): Promise<void> {
+    await fs.mkdir(dirPath, { recursive });
   }
 }

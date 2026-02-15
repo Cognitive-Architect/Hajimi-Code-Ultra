@@ -8,7 +8,8 @@ export default function Home() {
 
   useEffect(() => {
     // 检查是否在Electron环境中
-    if (typeof window !== 'undefined' && window.electronAPI) {
+    const win = window as any;
+    if (typeof window !== 'undefined' && win.electronAPI) {
       setIsElectron(true);
       loadRecentProjects();
     }
@@ -16,7 +17,8 @@ export default function Home() {
 
   const loadRecentProjects = async () => {
     try {
-      const recentProjects = await window.electronAPI.project.list();
+      const win = window as any;
+      const recentProjects = await win.electronAPI.project.list();
       setProjects(recentProjects);
     } catch (error) {
       console.error('Failed to load projects:', error);
@@ -25,7 +27,8 @@ export default function Home() {
 
   const handleOpenProject = async () => {
     try {
-      const project = await window.electronAPI.project.open();
+      const win = window as any;
+      const project = await win.electronAPI.project.open();
       if (project) {
         console.log('Opened project:', project);
         loadRecentProjects();

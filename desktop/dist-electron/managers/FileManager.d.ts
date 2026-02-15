@@ -12,7 +12,12 @@ export interface FileEntry {
 export declare class FileManager {
     private trashDirectory;
     constructor();
+    private getTrashDirectory;
     private ensureTrashDirectory;
+    /**
+     * 初始化
+     */
+    initialize(): Promise<void>;
     /**
      * 读取文件
      */
@@ -54,5 +59,17 @@ export declare class FileManager {
         success: boolean;
         error?: string;
     }>;
+    /**
+     * 获取文件状态
+     */
+    getFileStats(filePath: string): Promise<{
+        success: boolean;
+        stats?: any;
+        error?: string;
+    }>;
+    /**
+     * 创建目录（别名）
+     */
+    createDirectory(dirPath: string, recursive?: boolean): Promise<void>;
 }
 //# sourceMappingURL=FileManager.d.ts.map

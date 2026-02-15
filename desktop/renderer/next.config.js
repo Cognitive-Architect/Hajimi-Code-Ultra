@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
-  distDir: '.next',
+  distDir: 'dist',
   images: {
     unoptimized: true,
   },

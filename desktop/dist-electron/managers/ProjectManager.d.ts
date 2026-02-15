@@ -19,6 +19,8 @@ export interface ProjectSettings {
 export declare class ProjectManager {
     private recentProjects;
     private maxRecentProjects;
+    private dbManager;
+    constructor(dbManager?: any);
     /**
      * 打开项目
      */
@@ -43,5 +45,13 @@ export declare class ProjectManager {
      * 从最近列表中移除
      */
     removeFromRecent(projectId: string): void;
+    /**
+     * 关闭项目
+     */
+    closeProject(projectId: string): Promise<void>;
+    /**
+     * 创建新项目
+     */
+    createProject(name: string, projectPath: string): Promise<Project>;
 }
 //# sourceMappingURL=ProjectManager.d.ts.map

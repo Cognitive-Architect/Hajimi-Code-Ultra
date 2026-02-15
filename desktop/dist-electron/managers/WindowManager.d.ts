@@ -42,6 +42,22 @@ export declare class WindowManager {
      */
     private saveWindowState;
     /**
+     * 关闭窗口
+     */
+    closeWindow(windowId: number): void;
+    /**
+     * 聚焦窗口
+     */
+    focusWindow(windowId: number): void;
+    /**
+     * 最小化窗口
+     */
+    minimizeWindow(windowId: number): void;
+    /**
+     * 最大化/恢复窗口
+     */
+    maximizeWindow(windowId: number): boolean;
+    /**
      * 恢复窗口状态（启动时调用）
      */
     restoreWindows(): Promise<void>;

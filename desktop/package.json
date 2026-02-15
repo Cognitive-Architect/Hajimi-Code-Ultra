@@ -5,15 +5,15 @@
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "npm run build:electron && electron .",
+    "dev": "npm run build:electron && set ELECTRON_RUN_AS_NODE=&& electron .",
     "build": "next build && npm run build:electron",
-    "build:electron": "tsc -p electron/tsconfig.json",
+    "build:electron": "tsc -p electron-source/tsconfig.json",
     "build:renderer": "next build",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "type-check": "tsc --noEmit -p electron/tsconfig.json",
+    "type-check": "tsc --noEmit -p electron-source/tsconfig.json",
     "test": "jest",
-    "lint": "eslint electron/ renderer/"
+    "lint": "eslint electron-source/ renderer/"
   },
   "dependencies": {
     "@types/better-sqlite3": "^7.6.9",
@@ -35,6 +35,7 @@
     "@types/react-dom": "^18.2.0",
     "@types/uuid": "^9.0.8",
     "autoprefixer": "^10.4.17",
+    "cross-env": "^10.1.0",
     "electron": "^28.2.0",
     "electron-builder": "^24.9.1",
     "postcss": "^8.4.35",
