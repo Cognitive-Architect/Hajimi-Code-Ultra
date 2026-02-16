@@ -6,7 +6,7 @@
 [![Tests](https://img.shields.io/badge/tests-172%2F172%20passed-brightgreen.svg)](./tests)
 [![Audit](https://img.shields.io/badge/audit-A%2B-brightgreen.svg)](./audit)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/license-MIT-yellow.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](./LICENSE)
 
 ---
 
@@ -341,7 +341,7 @@ npx vitest --coverage --run
 
 ## 📄 许可证
 
-[MIT](./LICENSE) © 2026 Cognitive Architect
+[Apache 2.0](./LICENSE) © 2026 Cognitive Architect
 
 ---
 
