@@ -1,0 +1,81 @@
+/**
+ * Soyorin (Soyo) - PM主题
+ * 色板: #FFDD88 (素金)
+ * 
+ * @theme soyo
+ * @role pm
+ */
+
+[data-theme="soyo"] {
+  /* 主色调 */
+  --color-primary: #FFDD88;
+  --color-secondary: #FFEEAA;
+  --color-accent: #DDBB66;
+  
+  /* 背景与文字 */
+  --color-bg: #FFF8E8;
+  --color-bg-secondary: #FFFCF5;
+  --color-text: #443311;
+  --color-text-secondary: #776644;
+  
+  /* 悬浮球渐变 */
+  --orb-gradient: linear-gradient(135deg, #FFDD88 0%, #FFEEAA 100%);
+  --orb-shadow: 0 4px 20px rgba(255, 221, 136, 0.4);
+  
+  /* 错误码彩蛋 */
+  --error-404: "我是来结束这个项目的...";
+  --error-500: "让我忘记一切吧...";
+  --error-403: "这不是...我该走的路...";
+  
+  /* 状态色 */
+  --status-success: #66AA44;
+  --status-warning: #DDAA44;
+  --status-error: #AA4444;
+  
+  /* 边框与分隔线 */
+  --border-color: rgba(255, 221, 136, 0.3);
+  --divider-color: rgba(255, 221, 136, 0.2);
+}
+
+/* Soyorin主题动画 */
+[data-theme="soyo"] .theme-orb {
+  animation: soyo-gentle 5s ease-in-out infinite;
+}
+
+@keyframes soyo-gentle {
+  0%, 100% { 
+    transform: scale(1); 
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.01); 
+    opacity: 0.95;
+  }
+}
+
+/* 错误提示样式 */
+[data-theme="soyo"] .error-404::before {
+  content: var(--error-404);
+  color: var(--color-primary);
+  font-style: italic;
+}
+
+/* 按钮样式 */
+[data-theme="soyo"] .btn-primary {
+  background: var(--color-primary);
+  color: var(--color-text);
+  border: none;
+  box-shadow: 0 2px 8px rgba(255, 221, 136, 0.3);
+}
+
+[data-theme="soyo"] .btn-primary:hover {
+  background: var(--color-accent);
+  box-shadow: 0 4px 12px rgba(255, 221, 136, 0.4);
+}
+
+/* 卡片样式 */
+[data-theme="soyo"] .card {
+  background: var(--color-bg);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(255, 221, 136, 0.1);
+}

@@ -284,3 +284,8 @@ class YggdrasilController {
 // 导出单例
 export const yggdrasil = new YggdrasilController();
 export default yggdrasil;
+
+// ==================== HAJIMI VIRTUALIZED 集成 (v1.0.0) ====================
+// ID-85九维理论：1点额度模式下3点Agent集群的等效能力
+export * from '../virtualized';
+export { ContextCompressor } from '../fabric/compressor';

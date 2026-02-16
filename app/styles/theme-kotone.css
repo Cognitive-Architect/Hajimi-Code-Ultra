@@ -1,0 +1,96 @@
+/**
+ * 奶龙娘 (Kotone) - Doctor主题 (NEW!)
+ * 色板: #FFDD00 (奶黄)
+ * 
+ * @theme kotone
+ * @role doctor
+ * @since v1.3.0
+ */
+
+[data-theme="kotone"] {
+  /* 主色调 */
+  --color-primary: #FFDD00;
+  --color-secondary: #FFEE66;
+  --color-accent: #DDBB00;
+  
+  /* 背景与文字 */
+  --color-bg: #FFFBE8;
+  --color-bg-secondary: #FFFDF0;
+  --color-text: #443300;
+  --color-text-secondary: #776600;
+  
+  /* 悬浮球渐变 */
+  --orb-gradient: linear-gradient(135deg, #FFDD00 0%, #FFEE66 100%);
+  --orb-shadow: 0 4px 20px rgba(255, 221, 0, 0.5);
+  
+  /* 错误码彩蛋 */
+  --error-404: "奶龙龙找不到啦！";
+  --error-500: "系统坏掉啦，需要奶龙龙亲亲才能好~";
+  --error-403: "奶龙龙不让你看这里！";
+  
+  /* 状态色 */
+  --status-success: #44CC44;
+  --status-warning: #FFCC00;
+  --status-error: #FF4444;
+  
+  /* 边框与分隔线 */
+  --border-color: rgba(255, 221, 0, 0.4);
+  --divider-color: rgba(255, 221, 0, 0.25);
+}
+
+/* 奶龙娘主题动画 */
+[data-theme="kotone"] .theme-orb {
+  animation: kotone-bounce 1.5s ease-in-out infinite;
+}
+
+@keyframes kotone-bounce {
+  0%, 100% { 
+    transform: translateY(0) scale(1); 
+  }
+  40% { 
+    transform: translateY(-8px) scale(1.05); 
+  }
+  60% { 
+    transform: translateY(-4px) scale(1.02); 
+  }
+}
+
+/* 错误提示样式 */
+[data-theme="kotone"] .error-404::before {
+  content: var(--error-404);
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+/* 按钮样式 */
+[data-theme="kotone"] .btn-primary {
+  background: var(--color-primary);
+  color: var(--color-text);
+  border: none;
+  box-shadow: 0 2px 8px rgba(255, 221, 0, 0.4);
+  border-radius: 20px; /* 更圆润 */
+}
+
+[data-theme="kotone"] .btn-primary:hover {
+  background: var(--color-accent);
+  box-shadow: 0 4px 12px rgba(255, 221, 0, 0.5);
+  transform: translateY(-2px);
+}
+
+/* 卡片样式 */
+[data-theme="kotone"] .card {
+  background: var(--color-bg);
+  border: 2px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(255, 221, 0, 0.15);
+  border-radius: 16px;
+}
+
+/* 特殊装饰 */
+[data-theme="kotone"] .card::before {
+  content: "🐉";
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 24px;
+  opacity: 0.3;
+}

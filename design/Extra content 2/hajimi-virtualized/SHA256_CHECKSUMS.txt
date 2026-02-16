@@ -1,0 +1,29 @@
+═══════════════════════════════════════════════════════════════
+  HAJIMI VIRTUALIZED - SHA256校验和
+  生成时间: 2026-02-16
+═══════════════════════════════════════════════════════════════
+
+0356abeba15c3592dd7b97449d1f37e449a95108978859f9f22272719ac4c2a1  MIKE_AUDIT_REPORT.md
+5523fa04a4197b0a570bdad9bdb385f5ad9b1b971d9fec6b641a689a7ba6add3  app/api/virtualized/remix/route.ts
+ce1d89063a32ea22e2874397e6cf44e632f63c84cda8c227d343de5b55fed1e5  app/api/virtualized/rollback/route.ts
+732497c2841abecb3a873540c791e90fafc735201e86e9f1b95e3955d8916d0f  app/api/virtualized/spawn/route.ts
+89b99e17798ce04b282b7bd3ab9ef2c2e1f84e73c3738c9453c2fbdd3b928c82  app/api/virtualized/ui/floating-ball.ts
+9daff7a8746acec6ffb29c6eecfa2856c63c0cd77543c3f166444d0eb77d5a8c  lib/fabric/compressor.ts
+e16024fdd99a9263d94aa0fb98579d37b0ca1957730065932a890f52e6583581  lib/virtualized/agent-pool.ts
+5d4c46ef928f59de2061c088a17ab313f237b0b56abcede66165bc638216c5dd  lib/virtualized/checkpoint.ts
+20bed8c22b39d6117fe4a65b2b15860d48a7534f0cf721e6a12b2184b065e86d  lib/virtualized/monitor.ts
+239757f1b8abc89a3b27a22da453a205a012d0fd34ffec085b175188524a0054  lib/virtualized/protocol/bnf-parser.ts
+003540221c9a541fe87da6a550f6e3e39a20b2417afd4150746ae7f74de4a6e6  lib/virtualized/types.ts
+f82568a0b0ebf3c8aebf2ebfedea402d143cee55ae9ecd5b8799210e9284d368  tests/agent-pool.test.ts
+dcac6d235a74ce39693f805762c9a0d2d988888e8f264632062f514b43cc2209  tests/api.test.ts
+537b9b1bab0f474826db3c4657e820f2dbbfecb0be849042c18a0dc2793ab651  tests/checkpoint.test.ts
+93947c8347d7cf3b9b764f9330da972d82637a996a3ad367cf7b889498e160c1  tests/compressor.test.ts
+450dd186ea7279c092834648146880a934febf4e7f20512a42e3a4eafbcf4cb2  tests/monitor.test.ts
+57e6a1e4300d760a6b8b3d5f9967045ae44475c22f677ed5cf10b7c314b39fc7  tests/protocol.spec.ts
+
+═══════════════════════════════════════════════════════════════
+  校验结果: 2/2 OK
+  核心源文件: 10 个 ✅
+  测试文件: 6 个 ✅
+  总计: 16 个文件
+═══════════════════════════════════════════════════════════════

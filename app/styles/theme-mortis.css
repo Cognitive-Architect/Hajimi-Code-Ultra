@@ -1,0 +1,81 @@
+/**
+ * 黄瓜睦 (Mortis) - Architect主题
+ * 色板: #669966 (睦绿)
+ * 
+ * @theme mortis
+ * @role architect
+ */
+
+[data-theme="mortis"] {
+  /* 主色调 */
+  --color-primary: #669966;
+  --color-secondary: #99CC99;
+  --color-accent: #447744;
+  
+  /* 背景与文字 */
+  --color-bg: #EEF5EE;
+  --color-bg-secondary: #F5FAF5;
+  --color-text: #1A331A;
+  --color-text-secondary: #4A664A;
+  
+  /* 悬浮球渐变 */
+  --orb-gradient: linear-gradient(135deg, #669966 0%, #99CC99 100%);
+  --orb-shadow: 0 4px 20px rgba(102, 153, 102, 0.4);
+  
+  /* 错误码彩蛋 */
+  --error-404: "这个人...已经...不在了...";
+  --error-500: "我无法成为...人...";
+  --error-403: "Mortis...不想...看...";
+  
+  /* 状态色 */
+  --status-success: #44AA44;
+  --status-warning: #CCAA44;
+  --status-error: #AA4444;
+  
+  /* 边框与分隔线 */
+  --border-color: rgba(102, 153, 102, 0.3);
+  --divider-color: rgba(102, 153, 102, 0.2);
+}
+
+/* 黄瓜睦主题动画 */
+[data-theme="mortis"] .theme-orb {
+  animation: mortis-breathe 3s ease-in-out infinite;
+}
+
+@keyframes mortis-breathe {
+  0%, 100% { 
+    transform: scale(1); 
+    filter: brightness(1);
+  }
+  50% { 
+    transform: scale(1.02); 
+    filter: brightness(1.05);
+  }
+}
+
+/* 错误提示样式 */
+[data-theme="mortis"] .error-404::before {
+  content: var(--error-404);
+  font-style: italic;
+  color: var(--color-primary);
+}
+
+/* 按钮样式 */
+[data-theme="mortis"] .btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(102, 153, 102, 0.3);
+}
+
+[data-theme="mortis"] .btn-primary:hover {
+  background: var(--color-accent);
+  box-shadow: 0 4px 12px rgba(102, 153, 102, 0.4);
+}
+
+/* 卡片样式 */
+[data-theme="mortis"] .card {
+  background: var(--color-bg);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(102, 153, 102, 0.1);
+}
