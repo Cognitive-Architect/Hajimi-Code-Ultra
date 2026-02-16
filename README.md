@@ -1,6 +1,6 @@
 # Hajimi Code : Ouroboros 🐍♾️
 
-[![Version](https://img.shields.io/badge/version-v1.2.0--debt--cleared-blue)](https://github.com/Cognitive-Architect/Hajimi-Code-Ultra/releases/tag/v1.2.0-debt-cleared)
+[![Version](https://img.shields.io/badge/version-1.2.0--Hajimi--Code-blue)](https://github.com/Cognitive-Architect/Hajimi-Code-Ultra/releases/tag/1.2.0-Hajimi-Code)
 [![Coverage](https://img.shields.io/badge/coverage-63%25-green)](docs/COVERAGE-GAP-REPORT.md)
 [![Tests](https://img.shields.io/badge/tests-88%2F88%20core%20passed-brightgreen)](tests/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-orange)](LICENSE)
@@ -33,7 +33,7 @@ git clone https://github.com/Cognitive-Architect/Hajimi-Code-Ultra.git
 cd Hajimi-Code-Ultra
 
 # 2. 切换到稳定版
-git checkout v1.2.0-debt-cleared
+git checkout 1.2.0-Hajimi-Code
 
 # 3. 安装依赖
 npm ci
@@ -140,7 +140,7 @@ npm run dev
 - ✅ 六权星图可视化
 - ✅ Branching冲突检测
 
-### v1.2.0-debt-cleared（当前）✅
+### 1.2.0-Hajimi-Code（当前）✅
 - ✅ **DEBT-CLEARANCE-001: 4项债务全部清偿**
   - ✅ B-01: Redis PubSub跨实例广播
   - ✅ B-02: 本地Sentence-BERT语义嵌入
