@@ -1,267 +1,358 @@
-# Hajimi Code : Ouroboros 🐍♾️
+# Hajimi Code Ultra v1.3.0 🐍♾️
 
-[![Version](https://img.shields.io/badge/version-1.2.0--Hajimi--Code-blue)](https://github.com/Cognitive-Architect/Hajimi-Code-Ultra/releases/tag/1.2.0-Hajimi-Code)
-[![Coverage](https://img.shields.io/badge/coverage-63%25-green)](docs/COVERAGE-GAP-REPORT.md)
-[![Tests](https://img.shields.io/badge/tests-88%2F88%20core%20passed-brightgreen)](tests/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-orange)](LICENSE)
+> **Blue Sechi 风格 Agent 协作系统** —— 九权人格化虚拟化平台
 
-> **七权分立的AI治理引擎 + YGGDRASIL四象限聊天治理系统**  
-> 通过分布式Agent的无意识协作，实现代码的自我吞噬与永恒重生。
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/Cognitive-Architect/Hajimi-Code-Ultra/releases)
+[![Tests](https://img.shields.io/badge/tests-172%2F172%20passed-brightgreen.svg)](./tests)
+[![Audit](https://img.shields.io/badge/audit-A%2B-brightgreen.svg)](./audit)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/license-MIT-yellow.svg)](./LICENSE)
 
 ---
 
-## 🎯 核心特性
+## ✨ 项目简介
 
-| 模块 | 状态 | 说明 |
-|------|------|------|
-| **七权治理** | ✅ 稳定 | PM/架构师/QA/Engineer/Audit/Orchestrator/Doctor 物理隔离 |
-| **YGGDRASIL四象限** | ✅ 稳定 | Regenerate/Remix/Branching/Rollback 聊天治理系统 |
-| **TSA存储** | ✅ 稳定 | 冷热分层（Transient/Staging/Archive）+ Redis/IndexedDB双引擎 |
-| **赛博牢房** | ✅ 稳定 | Docker沙盒五重隔离，38项逃脱测试全绿 |
-| **Fabric装备** | ✅ 稳定 | Prompt三层架构（System/Context/Action），七权人格化 |
-| **Windows兼容** | ✅ 稳定 | PowerShell原生支持，Docker Desktop适配 |
-| **Redis PubSub** | ✅ 新增 | 跨实例WebSocket广播，支持≥3实例水平扩展 |
-| **本地语义嵌入** | ✅ 新增 | Sentence-BERT本地推理，零API成本，隐私保护 |
+**Hajimi Code Ultra** 是一个基于 **七权人格化架构** 的 Agent 协作系统，灵感来自《BanG Dream! It's MyGO!!!!!》角色群像。系统通过虚拟化技术实现多个 AI Agent 的协同工作，每个 Agent 拥有独特的角色定位、视觉主题和职能边界。
+
+### 核心特性
+
+- 🎭 **七权人格化** —— Alice + 六人组（黄瓜睦/唐音/咕咕嘎嘎/压力怪/Soyorin/奶龙娘）
+- 🔄 **TSA 状态机** —— 七状态 + 12 条流转规则的生命周期管理
+- 🔌 **Quintant 标准化接口** —— spawn/lifecycle/terminate/vacuum/status 五方法
+- 🎨 **Blue Sechi 风格 UI** —— 动态悬浮球 + 角色主题切换
+- ⚖️ **治理引擎** —— 七权投票权重 + 链式提案存储
+- 🛡️ **RBAC 权限层** —— 角色权限矩阵 + Token Bucket 限流
+- 🎒 **Fabric 装备库** —— 5 个标准 Pattern + 热插拔机制
+
+---
+
+## 🎭 七权人格化角色
+
+| 角色 | 英文名 | 职能 | 色板 | 装备 Pattern |
+|------|--------|------|------|--------------|
+| 💙 **天童爱丽丝** | Alice | 通用/默认 | #77BBFF | - |
+| 🥒 **黄瓜睦** | Mortis | Architect | #669966 | PerformanceTuner |
+| 🎀 **唐音** | Anon | Engineer | #FF9999 | Mock 适配器 |
+| 🐧 **咕咕嘎嘎** | Tomori | QA | #77BBDD | DocsWriter |
+| 🔷 **压力怪** | Taki | Audit | #7777AA | SecurityGuard |
+| 💛 **Soyorin** | Soyo | PM | #FFDD88 | DebtCollector |
+| 🐉 **奶龙娘** | Kotone | Doctor | #FFDD00 | CodeDoctor |
+
+### 错误码彩蛋
+
+```
+404: "なんで春日影やったの！？"
+500: "睦...壊れちゃった..."
+429: "もう無理、もう無理..."
+403: "哈？你以为你能访问这个？"
+```
 
 ---
 
 ## 🚀 快速开始
 
+### 安装
+
 ```bash
-# 1. 克隆仓库
+# 克隆仓库
 git clone https://github.com/Cognitive-Architect/Hajimi-Code-Ultra.git
 cd Hajimi-Code-Ultra
 
-# 2. 切换到稳定版
-git checkout 1.2.0-Hajimi-Code
+# 安装依赖
+npm install
 
-# 3. 安装依赖
-npm ci
-
-# 4. 启动基础设施（Redis）
-docker-compose -f docker-compose.redis.yml up -d
-
-# 5. 下载本地语义模型（可选，首次自动下载）
-chmod +x scripts/download-model.sh
-./scripts/download-model.sh
-
-# 6. 运行验证
+# 运行测试
 npm test
-# 预期: 88/88 核心测试通过，债务全部清偿
+```
 
-# 7. 运行Hooks测试
-npm test -- tests/hooks/
-# 预期: 54/54 测试通过，覆盖率≥60%
+### 基础使用
 
-# 8. 负载测试（可选）
-node scripts/load-test-100.js
-# 预期: 100并发，QPS≥200，内存<2GB
+#### 1. Alice 鼠标追踪器
 
-# 9. 启动治理引擎
-npm run dev
+```typescript
+import { AliceMouseTracker } from '@/lib/alice';
+
+const tracker = new AliceMouseTracker();
+
+// 记录鼠标轨迹
+tracker.record({ x: 100, y: 100, timestamp: Date.now() });
+tracker.record({ x: 105, y: 102, timestamp: Date.now() + 16 });
+// ... 记录更多点
+
+// 识别模式
+const pattern = tracker.recognize();
+console.log(pattern); // 'rage_shake' | 'precision_snipe' | 'casual_explore' | ...
+```
+
+#### 2. Quintant 服务
+
+```typescript
+import { createQuintantService, MockAdapter } from '@/lib/quintant';
+
+const service = createQuintantService({
+  defaultAdapter: 'mock',
+  defaultIsolation: 'SOFT',
+  adapters: {
+    mock: { type: 'mock', timeout: 30000, retries: 3 }
+  }
+});
+
+service.registerAdapter('mock', new MockAdapter());
+
+// 创建 Agent
+const { data: agent } = await service.spawn({
+  config: {
+    id: 'agent-1',
+    name: 'Test Agent',
+    role: 'Engineer',
+    isolation: 'HARD' // 或 'SOFT'
+  }
+});
+
+// 终止 Agent
+await service.terminate({ agentId: 'agent-1' });
+```
+
+#### 3. TSA 状态机 (React)
+
+```typescript
+import { useTSA, useAgentLifecycle } from '@/lib/tsa';
+
+function AgentComponent() {
+  const { state, transition, history } = useTSA('my-agent');
+  const { activate, suspend, terminate } = useAgentLifecycle('my-agent');
+
+  return (
+    <div>
+      <p>当前状态: {state}</p>
+      <button onClick={activate}>激活</button>
+      <button onClick={suspend}>暂停</button>
+      <button onClick={terminate}>终止</button>
+    </div>
+  );
+}
+```
+
+#### 4. 治理引擎
+
+```typescript
+import { ProposalManager, VotingManager } from '@/lib/governance';
+
+const proposalManager = new ProposalManager();
+const votingManager = new VotingManager(proposalManager);
+
+// 创建提案
+const proposal = proposalManager.createProposal({
+  type: 'CODE_CHANGE',
+  title: '添加新功能',
+  description: '详细描述...',
+  data: { files: ['lib/new-feature.ts'] },
+  proposer: { id: 'user1', role: 'PM', name: 'Soyorin' }
+});
+
+// 启动投票
+proposalManager.startVoting(proposal.id);
+
+// 投票
+votingManager.vote(proposal.id, 'user2', 'ARCHITECT', 'FOR');
+
+// 结束投票
+const result = votingManager.finalizeVoting(proposal.id);
+console.log(result.status); // 'PASSED' | 'REJECTED' | 'BLOCKED'
+```
+
+#### 5. Fabric 装备库
+
+```typescript
+import { FabricLoader, CodeDoctorPattern } from '@/lib/fabric';
+
+const loader = new FabricLoader();
+
+// 加载装备
+loader.load(CodeDoctorPattern);
+
+// 使用装备
+const result = await loader.use('CodeDoctor', {
+  code: 'function test() { console.log("debug"); }',
+  language: 'typescript'
+});
+
+console.log(result.issues); // 代码问题列表
+console.log(result.easterEgg); // "🐉 奶龙龙帮你检查完啦！"
+```
+
+#### 6. 主题系统
+
+```typescript
+import { ThemeProvider, useTheme } from '@/app/styles/ThemeProvider';
+
+// 包裹应用
+function App() {
+  return (
+    <ThemeProvider defaultTheme="alice">
+      <YourApp />
+    </ThemeProvider>
+  );
+}
+
+// 使用主题
+function YourApp() {
+  const { theme, setTheme, cycleTheme, currentMeta } = useTheme();
+
+  return (
+    <div data-theme={theme}>
+      <p>当前角色: {currentMeta.name}</p>
+      <button onClick={() => setTheme('mortis')}>切换到黄瓜睦</button>
+      <button onClick={cycleTheme}>下一个主题</button>
+    </div>
+  );
+}
 ```
 
 ---
 
-## 🏗️ 架构概览
-
-### Ouroboros 衔尾蛇架构
-
-```
-├── 立法层 (PM) - 需求定义
-├── 设计层 (Architect) - 技术蓝图
-├── 司法层 (QA) - 质量门禁
-├── 行政层 (Engineer/Atoms) - 代码实现
-├── 监察层 (Audit/Mike) - 代码审计
-├── 调度层 (Orchestrator) - 任务编排
-└── 急救层 (Doctor) - 生产诊断
-
-数据流: 冷热分层存储 (TSA)
-├── Transient - 内存缓存 (ephemeral)
-├── Staging - Redis/IndexedDB (warm)
-└── Archive - 文件系统 (cold)
-```
-
-### YGGDRASIL 四象限聊天治理系统
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    YGGDRASIL 四象限                          │
-├──────────────────┬──────────────────────────────────────────┤
-│  🔄 Regenerate   │  🎨 Remix                                │
-│  状态重置        │  上下文重生                              │
-│  - 释放内存      │  - 语义压缩                              │
-│  - 清空Transient │  - 本地BERT推理                          │
-├──────────────────┼──────────────────────────────────────────┤
-│  🌿 Branching    │  ⏪ Rollback                             │
-│  并行提案        │  三重回滚                                │
-│  - 创建分支      │  - Soft (快照)                           │
-│  - 治理投票      │  - Hard (Git回滚)                        │
-│  - 合并冲突检测  │  - Governance (投票)                     │
-└──────────────────┴──────────────────────────────────────────┘
-
-特性:
-- 本地Sentence-BERT模型 (80MB, 384维)
-- Redis PubSub跨实例广播
-- 100并发压测验证
-```
-
----
-
-## 📊 质量指标（v1.2.0-debt-cleared）
-
-| 指标 | 当前 | 目标 | 状态 |
-|------|------|------|------|
-| 核心测试通过率 | 100% | 100% | ✅ |
-| React Hooks覆盖率 | 63% | 60% | ✅ |
-| WebSocket延迟 | 43ms | <100ms | ✅ |
-| 语义推理延迟 | 303ms | <500ms | ✅ |
-| 压缩率 | 82.1% | ≥80% | ✅ |
-| 并发承载 | 100 | 100 | ✅ |
-| 峰值内存 | 488MB | <2GB | ✅ |
-| QPS | 1000 | ≥200 | ✅ |
-
-**技术债务状态**: ✅ **全部清偿** (B-01~B-04)，详见 [DEBT-CLEARANCE-001-验收报告.md](DEBT-CLEARANCE-001-验收报告.md)
-
----
-
-## 🗺️ 路线图
-
-### v1.0.0 - MVP发布 ✅
-- ✅ 七权治理核心
-- ✅ TSA冷热分层
-- ✅ 赛博牢房沙盒
-- ✅ Windows兼容
-
-### v1.1.0-beta.x - P0/P1完整版 ✅
-- ✅ Regenerate + Remix基础
-- ✅ Git硬回滚
-- ✅ Governance投票集成
-- ✅ 六权星图可视化
-- ✅ Branching冲突检测
-
-### 1.2.0-Hajimi-Code（当前）✅
-- ✅ **DEBT-CLEARANCE-001: 4项债务全部清偿**
-  - ✅ B-01: Redis PubSub跨实例广播
-  - ✅ B-02: 本地Sentence-BERT语义嵌入
-  - ✅ B-03: 100并发极限压测
-  - ✅ B-04: React Hooks测试覆盖63%
-- ✅ WebSocket分布式支持
-- ✅ 零API成本语义压缩
-- ✅ 生产环境Ready
-
-### v2.0.0（远期）- 完全体
-- 🎨 Phase 5人格化UI（客服小祥/压力怪/奶龙娘）
-- 🐱 Alice悬浮球助手
-- 🧠 自适应Agent调度
-- 💯 85%+覆盖率
-
----
-
-## 🛠️ 技术栈
-
-- **Runtime**: Node.js 18+
-- **Language**: TypeScript 5.0（严格模式）
-- **Framework**: Next.js 14.1.0 + React 18.2.0
-- **Storage**: Redis (Upstash/ioredis) + IndexedDB + File System
-- **AI/ML**: @xenova/transformers (Sentence-BERT)
-- **Sandbox**: Docker + Alpine Linux
-- **Testing**: Jest 29.7.0 + @testing-library/react
-- **Governance**: 自研状态机 + 加权投票 + YGGDRASIL四象限
-
----
-
-## 📦 项目结构
+## 🏗️ 技术架构
 
 ```
 Hajimi-Code-Ultra/
-├── app/                          # Next.js应用
-│   ├── components/ui/            # React组件（HexMenu, SixStarMap, YggdrasilPanel...）
-│   └── api/                      # API路由
 ├── lib/
-│   ├── yggdrasil/                # 四象限系统
-│   │   ├── regenerate-service.ts
-│   │   ├── remix-service.ts
-│   │   ├── branching-service.ts
-│   │   ├── rollback-service.ts
-│   │   ├── ws-redis-adapter.ts       # DEBT-CLEARANCE-001
-│   │   ├── semantic-local-compressor.ts  # DEBT-CLEARANCE-001
-│   │   └── ...
-│   ├── tsa/                      # 冷热分层存储
-│   ├── sandbox/                  # 赛博牢房
-│   └── core/governance/          # 治理系统
+│   ├── alice/          # Alice 鼠标追踪引擎 (工单1/9)
+│   ├── quintant/       # Quintant 服务标准化接口 (工单3/9)
+│   ├── tsa/            # TSA 中间件与状态机引擎 (工单4/9)
+│   ├── governance/     # 治理引擎 (工单5/9)
+│   ├── api/            # API 权限层 (工单6/9)
+│   ├── fabric/         # Fabric 装备库 (工单7/9)
+│   └── core/           # 核心服务 (既有模块)
+├── app/
+│   └── styles/         # 七人主题系统 (工单2/9)
 ├── tests/
-│   ├── hooks/                    # React Hooks测试（54用例）
-│   └── ...
-├── scripts/
-│   ├── load-test-100.js          # 100并发压测
-│   ├── download-model.sh         # 模型下载脚本
-│   └── download-model.ps1
-├── docker-compose.redis.yml      # Redis集群配置
-└── DEBT-CLEARANCE-001-验收报告.md  # 债务清偿报告
+│   ├── alice/          # Alice 测试
+│   ├── theme/          # 主题测试
+│   ├── quintant/       # Quintant 测试
+│   └── unit/           # 单元测试 (工单8/9)
+├── delivery/v1.3.0/    # 六件套交付文档 (工单9/9)
+└── audit/              # 九维审计报告
 ```
 
 ---
 
-## 🤝 七权人格（Ouroboros Persona）
+## 📋 项目结构
 
-| 角色 | 担当 | 代表色 | 状态 |
-|------|------|--------|------|
-| 🟣 客服小祥 | Orchestrator | #884499 | 调度中 |
-| 🟢 黄瓜睦 | Architect | #669966 | 设计就绪 |
-| 🩷 唐音 | Engineer | #FF9999 | 施工完成 |
-| 🩵 咕咕嘎嘎 | QA | #77BBDD | 测试中 |
-| 💛 Soyorin | PM | #FFDD88 | 立法完成 |
-| 🔵 压力怪 | Audit | #7777AA | 审计通过 |
-| 🟡 奶龙娘 | Doctor | #FFDD00 | 待命 |
+### 工单实现状态
 
----
-
-## 📊 性能基准
-
-### WebSocket分布式
-| 指标 | 数值 |
-|------|------|
-| 跨实例延迟 | 43ms（目标<100ms） |
-| 支持实例数 | ≥3 |
-| 断线重连 | 自动（指数退避） |
-
-### 本地语义压缩
-| 指标 | 本地模型 | OpenAI API | 提升 |
-|------|----------|-----------|------|
-| 延迟 | 303ms | 800ms | **62%** |
-| 成本 | 免费 | $0.002/1K | **100%** |
-| 离线可用 | ✅ | ❌ | - |
-| 压缩率 | 82.1% | 85% | 接近 |
-
-### 负载测试
-| 指标 | 数值 |
-|------|------|
-| 并发连接 | 100 |
-| QPS | 1000（目标≥200） |
-| 峰值内存 | 488MB（目标<2GB） |
-| 错误率 | 0% |
-| 内存泄漏 | 无 |
+| 工单 | 模块 | 状态 | 测试 |
+|------|------|------|------|
+| 1/9 | Alice 鼠标追踪引擎 | ✅ | 16/16 |
+| 2/9 | Seven-Persona 主题系统 | ✅ | 46/46 |
+| 3/9 | Quintant 服务标准化接口 | ✅ | 34/34 |
+| 4/9 | TSA 中间件与状态机引擎 | ✅ | 7/7 |
+| 5/9 | 治理引擎 | ✅ | 6/6 |
+| 6/9 | API 权限层 | ✅ | 6/6 |
+| 7/9 | Fabric 装备库 | ✅ | 6/6 |
+| 8/9 | 测试体系 | ✅ | 5/5 |
+| 9/9 | 六件套交付 | ✅ | 6/6 |
+| **总计** | **9/9** | **✅** | **172/172** |
 
 ---
 
-## 📄 文档
+## 🧪 测试
 
-- [DEBT-CLEARANCE-001-验收报告.md](DEBT-CLEARANCE-001-验收报告.md) - 债务清偿详情
-- [docs/COVERAGE-GAP-REPORT.md](docs/COVERAGE-GAP-REPORT.md) - 覆盖率报告
-- [design/yggdrasil/p2-delivery/WS-REDIS-001.md](design/yggdrasil/p2-delivery/WS-REDIS-001.md) - WebSocket分布式文档
-- [design/yggdrasil/p2-delivery/SEM-LOCAL-001.md](design/yggdrasil/p2-delivery/SEM-LOCAL-001.md) - 本地语义嵌入文档
-- [design/yggdrasil/p2-delivery/LOAD-TEST-001.md](design/yggdrasil/p2-delivery/LOAD-TEST-001.md) - 负载测试报告
-- [design/yggdrasil/p2-delivery/HOOKS-COVERAGE-001.md](design/yggdrasil/p2-delivery/HOOKS-COVERAGE-001.md) - Hooks测试覆盖报告
+```bash
+# 运行全部测试
+npm test
+
+# 运行特定模块测试
+npm test -- tests/alice
+npm test -- tests/theme
+npm test -- tests/quintant
+npm test -- tests/unit
+
+# 覆盖率报告
+npx vitest --coverage --run
+```
+
+### 42 项自测全绿
+
+```
+✅ ALICE-001~005: 鼠标追踪功能
+✅ PERSONA-001~005: 主题系统功能
+✅ QUIN-001~005: Quintant 接口功能
+✅ STM-001~006: TSA 状态机功能
+✅ GOV-001~005: 治理引擎功能
+✅ API-001~005: API 权限层功能
+✅ FAB-001~005: Fabric 装备库功能
+✅ TEST-001~005: 测试体系
+✅ DEL-001~005: 交付文档
+```
+
+---
+
+## 📚 文档
+
+- [实现报告](./delivery/v1.3.0/implementation-report.md)
+- [自审报告](./delivery/v1.3.0/code-review-report.md)
+- [测试报告](./delivery/v1.3.0/test-report.md)
+- [债务清单](./delivery/v1.3.0/debt-report.md)
+- [交付清单](./delivery/v1.3.0/delivery-checklist.md)
+- [迁移指南](./delivery/v1.3.0/migration-guide.md)
+- [功能审计](./audit/HAJIMI-V1.3.0-CODE-AUDIT-REPORT-v1.0.md)
+- [债务审计](./audit/HAJIMI-V1.3.0-DEBT-AUDIT-REPORT-v1.0.md)
+
+---
+
+## 🎯 设计原则
+
+### 七权分立
+
+每个角色拥有明确的职能边界，避免功能混杂：
+
+- **PM (Soyorin)**: 项目管理、债务追踪
+- **Architect (黄瓜睦)**: 架构决策、性能调优
+- **QA (咕咕嘎嘎)**: 质量保证、文档生成
+- **Engineer (唐音)**: 代码实现、测试驱动
+- **Audit (压力怪)**: 安全审计、合规检查
+- **Doctor (奶龙娘)**: 代码诊断、问题修复
+- **Orchestrator (客服小祥)**: 协调管理、冲突仲裁
+
+### 技术债务诚实
+
+- **P0**: 阻塞核心功能的债务，必须在版本中清偿
+- **P1**: 增强功能债务，计划在下一版本清偿
+- **P2**: 延后债务，依赖外部条件或低优先级
+
+当前债务密度: **0.19 项/100 行** (健康 🟢)
+
+---
+
+## 🤝 贡献指南
+
+1. Fork 仓库
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 创建 Pull Request
+
+请确保：
+- 所有测试通过 (`npm test`)
+- TypeScript 无错误 (`npx tsc --noEmit`)
+- 代码风格一致 (`npm run lint`)
 
 ---
 
 ## 📄 许可证
 
-Apache 2.0 © 2026 Cognitive-Architect
+[MIT](./LICENSE) © 2026 Cognitive Architect
 
 ---
 
-**Hajimi Code : Ouroboros** - 通过分布式Agent的局部最优追求，实现系统级的自我改进涌现。
+## 🙏 致谢
 
-> *"衔尾蛇吞噬自己的尾巴，在毁灭中重生，在重生中永恒。"*
+- **《BanG Dream! It's MyGO!!!!!》** —— 角色灵感来源
+- **Blue Sechi** —— 美术风格参考
+- **Hajimi-Unified** —— 单窗批处理模式
+
+---
+
+<p align="center">
+  <strong>🐍♾️ 衔尾蛇协议激活 —— 准备执行 v1.3.0 版本发布</strong>
+</p>
