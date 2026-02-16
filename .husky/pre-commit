@@ -1,0 +1,32 @@
+#!/bin/sh
+# DEBT-FAB-DEEP: Git Hook - 提交前安全检查
+# 在提交前自动运行安全扫描
+
+echo "🔒 运行提交前安全检查..."
+
+# 检查TypeScript错误
+echo "📋 检查TypeScript类型..."
+npx tsc --noEmit --project tsconfig.json
+if [ $? -ne 0 ]; then
+    echo "❌ TypeScript类型检查失败"
+    exit 1
+fi
+
+# 运行ESLint安全扫描
+echo "🔍 运行ESLint安全扫描..."
+npx eslint lib/ app/ --ext .ts,.tsx --config .eslintrc.security.js
+if [ $? -ne 0 ]; then
+    echo "❌ ESLint安全扫描发现问题"
+    echo "提示: 使用 'git commit --no-verify' 跳过检查（不推荐）"
+    exit 1
+fi
+
+# 检查硬编码密钥（二次确认）
+echo "🔑 检查硬编码密钥..."
+if grep -r "sk-[a-zA-Z0-9]\{20,\}" lib/ app/ --include="*.ts" --include="*.tsx" 2>/dev/null; then
+    echo "❌ 发现疑似硬编码密钥，请移入.env.local"
+    exit 1
+fi
+
+echo "✅ 提交前安全检查通过"
+exit 0

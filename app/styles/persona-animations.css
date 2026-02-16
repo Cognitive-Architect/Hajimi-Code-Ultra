@@ -1,0 +1,156 @@
+/**
+ * Persona 动画性能优化
+ * 
+ * DEBT-PERSONA-ANIM 清偿实现
+ * - GPU加速优化（transform/opacity）
+ * - will-change声明
+ * - 减少重绘重排
+ * 
+ * @version 1.4.0
+ * @debt DEBT-PERSONA-ANIM (P0-已清偿)
+ */
+
+/* ========== GPU 加速基础类 ========== */
+
+.gpu-accelerated {
+  /* 强制GPU层 */
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* ========== 悬浮球动画（GPU优化版） ========== */
+
+.theme-orb {
+  /* 硬件加速 */
+  transform: translateZ(0);
+  will-change: transform, filter;
+  
+  /* 使用transform代替top/left */
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              filter 0.3s ease;
+}
+
+/* 黄瓜睦 - 呼吸动画 */
+[data-theme="mortis"] .theme-orb {
+  animation: mortis-breathe-gpu 3s ease-in-out infinite;
+}
+
+@keyframes mortis-breathe-gpu {
+  0%, 100% { 
+    transform: translateZ(0) scale(1); 
+    filter: brightness(1);
+  }
+  50% { 
+    transform: translateZ(0) scale(1.02); 
+    filter: brightness(1.05);
+  }
+}
+
+/* 唐音 - 弹性动画 */
+[data-theme="anon"] .theme-orb {
+  animation: anon-bounce-gpu 2s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes anon-bounce-gpu {
+  0%, 100% { transform: translateZ(0) translateY(0); }
+  25% { transform: translateZ(0) translateY(-3px); }
+  50% { transform: translateZ(0) translateY(0); }
+  75% { transform: translateZ(0) translateY(-2px); }
+}
+
+/* 咕咕嘎嘎 - 漂浮动画 */
+[data-theme="tomori"] .theme-orb {
+  animation: tomori-float-gpu 4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes tomori-float-gpu {
+  0%, 100% { transform: translateZ(0) translateY(0) rotate(0deg); }
+  25% { transform: translateZ(0) translateY(-5px) rotate(-2deg); }
+  50% { transform: translateZ(0) translateY(-2px) rotate(0deg); }
+  75% { transform: translateZ(0) translateY(-4px) rotate(2deg); }
+}
+
+/* 压力怪 - 抖动动画 */
+[data-theme="taki"] .theme-orb {
+  animation: taki-shake-gpu 0.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes taki-shake-gpu {
+  0%, 100% { transform: translateZ(0) translateX(0); }
+  25% { transform: translateZ(0) translateX(-2px); }
+  75% { transform: translateZ(0) translateX(2px); }
+}
+
+/* Soyorin - 柔和动画 */
+[data-theme="soyo"] .theme-orb {
+  animation: soyo-gentle-gpu 5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes soyo-gentle-gpu {
+  0%, 100% { 
+    transform: translateZ(0) scale(1); 
+    opacity: 1;
+  }
+  50% { 
+    transform: translateZ(0) scale(1.01); 
+    opacity: 0.95;
+  }
+}
+
+/* 奶龙娘 - 弹跳动画 */
+[data-theme="kotone"] .theme-orb {
+  animation: kotone-bounce-gpu 1.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes kotone-bounce-gpu {
+  0%, 100% { 
+    transform: translateZ(0) translateY(0) scale(1); 
+  }
+  40% { 
+    transform: translateZ(0) translateY(-8px) scale(1.05); 
+  }
+  60% { 
+    transform: translateZ(0) translateY(-4px) scale(1.02); 
+  }
+}
+
+/* ========== 主题过渡优化 ========== */
+
+[data-theme] {
+  /* 使用CSS变量过渡，避免重绘 */
+  transition: 
+    --color-primary 0.3s ease,
+    --color-bg 0.3s ease,
+    --color-text 0.3s ease;
+}
+
+/* ========== 减少动画偏好支持 ========== */
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-orb,
+  [data-theme] .theme-orb {
+    animation: none !important;
+    transition: none !important;
+    will-change: auto !important;
+  }
+}
+
+/* ========== 动画性能监控（调试用） ========== */
+
+@keyframes performance-monitor {
+  0% { content: 'GPU: ON'; }
+  100% { content: 'GPU: ON'; }
+}
+
+/* 使用contain优化 */
+.theme-container {
+  contain: layout style paint;
+  content-visibility: auto;
+}
