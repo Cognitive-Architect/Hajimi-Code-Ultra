@@ -53,6 +53,11 @@ export { branchingService } from './branching-service';
 export { rollbackService } from './rollback-service';
 export { remixService } from './remix-service';
 
+// P1新增服务
+export { gitRollbackAdapter, GitRollbackAdapter } from './git-rollback-adapter';
+export { governanceRollbackService, GovernanceRollbackService } from './governance-rollback-service';
+export { branchingConflictResolver, BranchingConflictResolver } from './branching-conflict-resolver';
+
 // ==================== 统一控制器 ====================
 import { 
   RegenerateRequest, 
