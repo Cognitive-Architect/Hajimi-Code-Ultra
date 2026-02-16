@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════════════════
+  HAJIMI CODE : OUROBOROS v1.2.0 - SHA256校验和
+  生成时间: 2026-02-16
+  版本标签: v1.2.0 (a5038ff)
+═══════════════════════════════════════════════════════════════
+
+# 交付物
+1CA930E178C0AF63D09A949133DB9ECEE45E4B6F4DF49B594F6AAFBC6B1B2B63  hajimi-code-v1.2.0-docs.zip
+
+# 核心源文件 - lib/virtualized/
+003540221C9A541FE87DA6A550F6E3E39A20B2417AFD4150746AE7F74DE4A6E6  lib/virtualized/types.ts
+E16024FDD99A9263D94AA0FB98579D37B0CA1957730065932A890F52E6583581  lib/virtualized/agent-pool.ts
+5D4C46EF928F59DE2061C088A17AB313F237B0B56ABCEDE66165BC638216C5DD  lib/virtualized/checkpoint.ts
+20BED8C22B39D6117FE4A65B2B15860D48A7534F0CF721E6A12B2184B065E86D  lib/virtualized/monitor.ts
+239757F1B8ABC89A3B27A22DA453A205A012D0FD34FFEC085B175188524A0054  lib/virtualized/protocol/bnf-parser.ts
+
+# 核心源文件 - lib/fabric/
+9DAFF7A8746ACEC6FFB29C6EECFA2856C63C0CD77543C3F166444D0EB77D5A8C  lib/fabric/compressor.ts
+
+# API路由
+732497C2841ABECB3A873540C791E90FAFC735201E86E9F1B95E3955D8916D0F  app/api/v1/virtualized/spawn/route.ts
+5523FA04A4197B0A570BDAD9BDB385F5AD9B1B971D9FEC6B641A689A7BA6ADD3  app/api/v1/virtualized/remix/route.ts
+CE1D89063A32EA22E2874397E6CF44E632F63C84CDA8C227D343DE5B55FED1E5  app/api/v1/virtualized/rollback/route.ts
+89B99E17798CE04B282B7BD3AB9EF2C2E1F84E73C3738C9453C2FBDD3B928C82  app/api/v1/virtualized/ui/floating-ball.ts
+
+# UI组件
+89B99E17798CE04B282B7BD3AB9EF2C2E1F84E73C3738C9453C2FBDD3B928C82  app/components/ui/VirtualizedFloatingOrb.tsx
+
+# 文档
+0356ABEBA15C3592DD7B97449D1F37E449A95108978859F9F22272719AC4C2A1  RELEASE-NOTE-v1.2.0.md
+
+═══════════════════════════════════════════════════════════════
+  校验方法: Get-FileHash -Algorithm SHA256 <filename>
+  或: certutil -hashfile <filename> SHA256
+═══════════════════════════════════════════════════════════════
