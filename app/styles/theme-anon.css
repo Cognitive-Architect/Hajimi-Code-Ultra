@@ -1,0 +1,76 @@
+/**
+ * 唐音 (Anon) - Engineer主题
+ * 色板: #FF9999 (音粉)
+ * 
+ * @theme anon
+ * @role engineer
+ */
+
+[data-theme="anon"] {
+  /* 主色调 */
+  --color-primary: #FF9999;
+  --color-secondary: #FFCCCC;
+  --color-accent: #DD7777;
+  
+  /* 背景与文字 */
+  --color-bg: #FFF0F0;
+  --color-bg-secondary: #FFF5F5;
+  --color-text: #441111;
+  --color-text-secondary: #774444;
+  
+  /* 悬浮球渐变 */
+  --orb-gradient: linear-gradient(135deg, #FF9999 0%, #FFCCCC 100%);
+  --orb-shadow: 0 4px 20px rgba(255, 153, 153, 0.4);
+  
+  /* 错误码彩蛋 */
+  --error-404: "欸？404？等等我查一下...";
+  --error-500: "我才是挑战者...";
+  --error-403: "凛酱...不见了...";
+  
+  /* 状态色 */
+  --status-success: #44AA44;
+  --status-warning: #DDAA44;
+  --status-error: #DD4444;
+  
+  /* 边框与分隔线 */
+  --border-color: rgba(255, 153, 153, 0.3);
+  --divider-color: rgba(255, 153, 153, 0.2);
+}
+
+/* 唐音主题动画 */
+[data-theme="anon"] .theme-orb {
+  animation: anon-bounce 2s ease-in-out infinite;
+}
+
+@keyframes anon-bounce {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-3px); }
+  50% { transform: translateY(0); }
+  75% { transform: translateY(-2px); }
+}
+
+/* 错误提示样式 */
+[data-theme="anon"] .error-404::before {
+  content: var(--error-404);
+  color: var(--color-primary);
+}
+
+/* 按钮样式 */
+[data-theme="anon"] .btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(255, 153, 153, 0.3);
+}
+
+[data-theme="anon"] .btn-primary:hover {
+  background: var(--color-accent);
+  box-shadow: 0 4px 12px rgba(255, 153, 153, 0.4);
+}
+
+/* 卡片样式 */
+[data-theme="anon"] .card {
+  background: var(--color-bg);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(255, 153, 153, 0.1);
+}

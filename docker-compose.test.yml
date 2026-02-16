@@ -1,0 +1,27 @@
+# Docker Compose for Redis Test Environment
+# 客服小祥·Docker编排师 - B-02/09
+
+version: '3.8'
+
+services:
+  redis-test:
+    image: redis:7-alpine
+    container_name: hajimi-redis-test
+    ports:
+      - "6379:6379"
+    volumes:
+      # 使用相对路径，兼容 Windows 和 Linux
+      - ./tmp/redis-test:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 10
+      start_period: 2s
+    networks:
+      - hajimi-test-net
+
+networks:
+  hajimi-test-net:
+    driver: bridge

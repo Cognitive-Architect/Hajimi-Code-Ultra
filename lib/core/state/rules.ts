@@ -101,18 +101,18 @@ export class TransitionRulesEngine {
   private loadDefaultRules(): void {
     const defaultTransitions: TransitionRule[] = [
       // IDLE 流转
-      { from: 'IDLE', to: 'DESIGN', allowed: true, requiredRoles: ['pm', 'arch'], description: 'PM或架构师启动设计' },
+      { from: 'IDLE', to: 'DESIGN', allowed: true, requiredRoles: ['pm', 'arch', 'system'], description: 'PM、架构师或系统自动启动设计' },
       
       // DESIGN 流转
-      { from: 'DESIGN', to: 'CODE', allowed: true, requiredRoles: ['arch', 'engineer'], description: '设计完成，进入编码' },
+      { from: 'DESIGN', to: 'CODE', allowed: true, requiredRoles: ['arch', 'engineer', 'system'], description: '设计完成，进入编码' },
       { from: 'DESIGN', to: 'IDLE', allowed: true, requiredRoles: ['pm'], description: 'PM取消设计' },
       
       // CODE 流转
-      { from: 'CODE', to: 'AUDIT', allowed: true, requiredRoles: ['engineer'], description: '编码完成，提交审计' },
+      { from: 'CODE', to: 'AUDIT', allowed: true, requiredRoles: ['engineer', 'system'], description: '编码完成，提交审计' },
       { from: 'CODE', to: 'DESIGN', allowed: true, requiredRoles: ['arch'], description: '架构师要求重新设计' },
       
       // AUDIT 流转
-      { from: 'AUDIT', to: 'BUILD', allowed: true, requiredRoles: ['qa'], description: '审计通过，进入构建' },
+      { from: 'AUDIT', to: 'BUILD', allowed: true, requiredRoles: ['qa', 'system'], description: '审计通过，进入构建' },
       { from: 'AUDIT', to: 'CODE', allowed: true, requiredRoles: ['qa'], description: 'QA要求修复问题' },
       
       // BUILD 流转

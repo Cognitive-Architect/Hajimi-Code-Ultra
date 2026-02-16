@@ -1,0 +1,103 @@
+# Docker Compose 沙盒编排配置
+# 客服小祥·典狱长 - 安全隔离代码执行环境
+
+services:
+  sandbox:
+    image: alpine:latest
+    container_name: sandbox-${SANDBOX_ID:-default}
+    
+    # 必须添加：容器保活命令（防止容器启动即退出）
+    command: ["tail", "-f", "/dev/null"]
+    
+    # Rootless 用户配置 (UID 1000)
+    user: "1000:1000"
+    
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    
+    # 进程数限制 (通过 cgroup v2 的 pids.max)
+    # 使用 Docker Desktop 的内置 pid 限制
+    
+    # 只读文件系统
+    read_only: true
+    
+    # 临时文件系统挂载
+    tmpfs:
+      - /workspace:rw,noexec,nosuid,size=100m,uid=1000,gid=1000
+      - /tmp:rw,noexec,nosuid,size=50m,uid=1000,gid=1000
+    
+    # 网络隔离
+    network_mode: none
+    
+    # 安全选项
+    security_opt:
+      - no-new-privileges:true
+      # - seccomp:./config/seccomp-default.json  # 临时禁用 seccomp 进行测试
+    
+    # 禁止特权
+    privileged: false
+    
+    # 只挂载必要的路径
+    volumes:
+      # seccomp 配置文件
+      - ./config:/config:ro
+    
+    # 重启策略
+    restart: "no"
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo 'healthcheck'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    
+    # 环境变量
+    environment:
+      - HOME=/workspace
+      - USER=sandbox
+      - SANDBOX_ID=${SANDBOX_ID:-default}
+    
+    # 工作目录
+    working_dir: /workspace
+    
+    # 标准输入保持打开 (用于交互)
+    stdin_open: true
+    tty: true
+    
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 可选: 代码注入服务 (用于向沙盒传递代码)
+  code-injector:
+    image: alpine:latest
+    container_name: code-injector-${SANDBOX_ID:-default}
+    
+    # 容器保活命令
+    command: ["tail", "-f", "/dev/null"]
+    
+    network_mode: none
+    read_only: true
+    user: "1000:1000"
+    tmpfs:
+      - /workspace:rw,noexec,nosuid,size=50m,uid=1000,gid=1000
+    security_opt:
+      - no-new-privileges:true
+    privileged: false
+    restart: "no"
+    environment:
+      - SANDBOX_ID=${SANDBOX_ID:-default}
+    profiles:
+      - injector

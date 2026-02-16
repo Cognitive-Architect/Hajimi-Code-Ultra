@@ -1,0 +1,76 @@
+/**
+ * 压力怪 (Taki) - Audit主题
+ * 色板: #7777AA (压力蓝)
+ * 
+ * @theme taki
+ * @role audit
+ */
+
+[data-theme="taki"] {
+  /* 主色调 */
+  --color-primary: #7777AA;
+  --color-secondary: #AAAAEE;
+  --color-accent: #555588;
+  
+  /* 背景与文字 */
+  --color-bg: #EEEEFF;
+  --color-bg-secondary: #F5F5FF;
+  --color-text: #222244;
+  --color-text-secondary: #555577;
+  
+  /* 悬浮球渐变 */
+  --orb-gradient: linear-gradient(135deg, #7777AA 0%, #AAAAEE 100%);
+  --orb-shadow: 0 4px 20px rgba(119, 119, 170, 0.4);
+  
+  /* 错误码彩蛋 */
+  --error-404: "哈？找不到？你是不是没认真找？";
+  --error-500: "这个Bug...是你的责任吧？";
+  --error-403: "哈？你以为你能访问这个？";
+  
+  /* 状态色 */
+  --status-success: #44AA44;
+  --status-warning: #DDAA44;
+  --status-error: #DD4444;
+  
+  /* 边框与分隔线 */
+  --border-color: rgba(119, 119, 170, 0.3);
+  --divider-color: rgba(119, 119, 170, 0.2);
+}
+
+/* 压力怪主题动画 */
+[data-theme="taki"] .theme-orb {
+  animation: taki-shake 0.5s ease-in-out infinite;
+}
+
+@keyframes taki-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+/* 错误提示样式 */
+[data-theme="taki"] .error-404::before {
+  content: var(--error-404);
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+/* 按钮样式 */
+[data-theme="taki"] .btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(119, 119, 170, 0.3);
+}
+
+[data-theme="taki"] .btn-primary:hover {
+  background: var(--color-accent);
+  box-shadow: 0 4px 12px rgba(119, 119, 170, 0.4);
+}
+
+/* 卡片样式 */
+[data-theme="taki"] .card {
+  background: var(--color-bg);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(119, 119, 170, 0.1);
+}

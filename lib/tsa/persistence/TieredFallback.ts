@@ -359,10 +359,13 @@ export class TieredFallback implements StorageAdapter {
       try {
         const initialized = await store.initialize();
         status.isAvailable = store.isAvailable;
-        status.isConnected = initialized;
+        // B-01/09 FIX: 使用store.isConnected而不是initialize()返回值
+        // 因为某些存储（如RedisStore）可能在使用fallback时initialize()返回false
+        // 但store.isConnected仍然返回true表示可用
+        status.isConnected = store.isConnected;
 
-        if (initialized) {
-          this.logger.info(`${status.name} initialized successfully`);
+        if (status.isConnected) {
+          this.logger.info(`${status.name} initialized successfully (connected=${initialized})`);
         } else {
           this.logger.warn(`${status.name} initialization failed`);
         }
@@ -691,7 +694,7 @@ export class TieredFallback implements StorageAdapter {
       return;
     }
 
-    this.recoverTimer = window.setInterval(() => {
+    this.recoverTimer = setInterval(() => {
       this.attemptRecover().catch(error => {
         this.logger.warn('Recover task error:', error);
       });

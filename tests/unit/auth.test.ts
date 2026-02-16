@@ -70,7 +70,7 @@ describe('API Auth', () => {
       expect(json.error.requestId).toBeDefined();
     });
 
-    it('should handle Zod validation errors', () => {
+    it('should handle Zod validation errors', async () => {
       const schema = z.object({
         name: z.string().min(3),
         age: z.number().positive(),
@@ -81,10 +81,8 @@ describe('API Auth', () => {
       } catch (error) {
         if (error instanceof ZodError) {
           const response = handleAPIError(error);
-          // 解析 JSON 响应体
-          const body = JSON.parse(
-            Buffer.from(response.body as unknown as ArrayBuffer).toString()
-          );
+          // 正确解析 NextResponse 的 body
+          const body = await response.json();
 
           expect(response.status).toBe(400);
           expect(body.success).toBe(false);

@@ -23,3 +23,11 @@ export type {
   CreateProposalInput,
   VoteChoice 
 } from './useGovernance';
+
+// useSandbox Hook
+export { useSandbox, useCodeRiskAssessment, useExecutionHistory } from './useSandbox';
+export type { 
+  SandboxState,
+  UseSandboxReturn,
+  UseSandboxOptions,
+} from './useSandbox';

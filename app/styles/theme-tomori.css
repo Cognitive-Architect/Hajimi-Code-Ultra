@@ -1,0 +1,84 @@
+/**
+ * 咕咕嘎嘎 (Tomori) - QA主题
+ * 色板: #77BBDD (鸭蓝)
+ * 
+ * @theme tomori
+ * @role qa
+ */
+
+[data-theme="tomori"] {
+  /* 主色调 */
+  --color-primary: #77BBDD;
+  --color-secondary: #AADDEE;
+  --color-accent: #5599BB;
+  
+  /* 背景与文字 */
+  --color-bg: #EEF7FB;
+  --color-bg-secondary: #F5FAFD;
+  --color-text: #113344;
+  --color-text-secondary: #446677;
+  
+  /* 悬浮球渐变 */
+  --orb-gradient: linear-gradient(135deg, #77BBDD 0%, #AADDEE 100%);
+  --orb-shadow: 0 4px 20px rgba(119, 187, 221, 0.4);
+  
+  /* 错误码彩蛋 */
+  --error-404: "咕咕嘎嘎...不见了...";
+  --error-500: "为什么要测试代码！";
+  --error-403: "我不需要...这样的世界...";
+  
+  /* 状态色 */
+  --status-success: #44AA44;
+  --status-warning: #CCAA44;
+  --status-error: #AA4444;
+  
+  /* 边框与分隔线 */
+  --border-color: rgba(119, 187, 221, 0.3);
+  --divider-color: rgba(119, 187, 221, 0.2);
+}
+
+/* 咕咕嘎嘎主题动画 */
+[data-theme="tomori"] .theme-orb {
+  animation: tomori-float 4s ease-in-out infinite;
+}
+
+@keyframes tomori-float {
+  0%, 100% { 
+    transform: translateY(0) rotate(0deg); 
+  }
+  25% { 
+    transform: translateY(-5px) rotate(-2deg); 
+  }
+  50% { 
+    transform: translateY(-2px) rotate(0deg); 
+  }
+  75% { 
+    transform: translateY(-4px) rotate(2deg); 
+  }
+}
+
+/* 错误提示样式 */
+[data-theme="tomori"] .error-404::before {
+  content: var(--error-404);
+  color: var(--color-primary);
+}
+
+/* 按钮样式 */
+[data-theme="tomori"] .btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(119, 187, 221, 0.3);
+}
+
+[data-theme="tomori"] .btn-primary:hover {
+  background: var(--color-accent);
+  box-shadow: 0 4px 12px rgba(119, 187, 221, 0.4);
+}
+
+/* 卡片样式 */
+[data-theme="tomori"] .card {
+  background: var(--color-bg);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(119, 187, 221, 0.1);
+}

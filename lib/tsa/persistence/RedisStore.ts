@@ -7,8 +7,14 @@
  * - 实现TTL管理
  * - 错误处理和重试机制
  * 
+ * B-02/04 FIX: 添加标准Redis协议支持（ioredis）
+ * - 支持 redis:// 和 rediss:// 协议
+ * - 修复本地Redis连接问题
+ * 
  * DEBT-004 清偿标记: TSA虚假持久化 → 已实现真实Redis持久化
  */
+
+import Redis from 'ioredis';
 
 /**
  * 存储适配器接口
@@ -72,6 +78,258 @@ class RedisError extends Error {
   constructor(message: string, public readonly cause?: Error) {
     super(message);
     this.name = 'RedisError';
+  }
+}
+
+/**
+ * 标准Redis客户端（使用ioredis）
+ * B-02/04 FIX: 支持 redis:// 和 rediss:// 协议
+ */
+class StandardRedisClient {
+  private client: Redis | null = null;
+  private config: RedisConfig;
+  private maxRetries: number;
+  private retryInterval: number;
+
+  constructor(config: RedisConfig) {
+    this.config = config;
+    this.maxRetries = config.maxRetries ?? 3;
+    this.retryInterval = config.retryInterval ?? 1000;
+  }
+
+  /**
+   * B-02/06 FIX: 优化ioredis连接参数，适配Windows环境
+   * - enableOfflineQueue: false（避免离线队列堆积）
+   * - retryStrategy: 指数退避
+   * - connectTimeout: 5000ms（Windows适配）
+   * - lazyConnect: false（立即连接，及时发现错误）
+   * - Windows下自动将localhost替换为127.0.0.1
+   */
+  connect(): void {
+    if (this.client) return;
+
+    let url = this.config.url!;
+    
+    // B-02/06 FIX: Windows下自动将localhost替换为127.0.0.1
+    if (url.includes('localhost')) {
+      const originalUrl = url;
+      url = url.replace('localhost', '127.0.0.1');
+      console.log(`[RedisStore] Windows fix: replaced localhost with 127.0.0.1`);
+      console.log(`[RedisStore] Original: ${originalUrl}`);
+      console.log(`[RedisStore] Fixed: ${url}`);
+    }
+    
+    // 解析Redis URL
+    const urlObj = new URL(url);
+    const isTls = urlObj.protocol === 'rediss:';
+    
+    // B-02/06 FIX: 连接前输出目标URL（诊断日志）
+    console.log(`[RedisStore] Connecting to Redis at ${urlObj.hostname}:${urlObj.port || '6379'}...`);
+    
+    this.client = new Redis({
+      host: urlObj.hostname,
+      port: parseInt(urlObj.port || '6379', 10),
+      password: urlObj.password || undefined,
+      username: urlObj.username || undefined,
+      db: this.config.db ?? 0,
+      tls: isTls ? {} : undefined,
+      // B-02/06 FIX: Windows适配的连接超时
+      connectTimeout: this.config.connectTimeout ?? 5000,
+      // B-02/06 FIX: 避免离线队列堆积
+      enableOfflineQueue: false,
+      // B-02/06 FIX: 限制重试次数
+      maxRetriesPerRequest: this.maxRetries,
+      // B-02/06 FIX: 指数退避重试策略
+      retryStrategy: (times) => {
+        if (times > this.maxRetries) {
+          console.warn(`[RedisStore] Max retries (${this.maxRetries}) exceeded, giving up`);
+          return null;
+        }
+        const delay = Math.min(times * this.retryInterval, 5000);
+        console.log(`[RedisStore] Retry attempt ${times}/${this.maxRetries}, waiting ${delay}ms...`);
+        return delay;
+      },
+      // B-02/06 FIX: 立即连接，及时发现错误（原为true）
+      lazyConnect: false,
+    });
+    
+    // B-02/06 FIX: 添加连接事件监听器（诊断日志）
+    this.client.on('connect', () => {
+      console.log(`[RedisStore] Redis client connected to ${urlObj.hostname}:${urlObj.port || '6379'}`);
+    });
+    
+    this.client.on('ready', () => {
+      console.log(`[RedisStore] Redis client ready`);
+    });
+    
+    this.client.on('error', (err) => {
+      console.error(`[RedisStore] Redis connection error:`, err.message);
+    });
+    
+    this.client.on('close', () => {
+      console.warn(`[RedisStore] Redis connection closed`);
+    });
+    
+    this.client.on('reconnecting', () => {
+      console.log(`[RedisStore] Redis reconnecting...`);
+    });
+  }
+
+  /**
+   * 断开连接
+   */
+  async disconnect(): Promise<void> {
+    if (this.client) {
+      await this.client.quit();
+      this.client = null;
+    }
+  }
+
+  /**
+   * B-02/06 FIX: 建立实际连接（ioredis lazyConnect=false时自动连接）
+   * 等待连接就绪并执行ping验证
+   */
+  async ensureConnected(): Promise<boolean> {
+    if (!this.client) {
+      console.error('[RedisStore] Redis client is null');
+      return false;
+    }
+    
+    // B-02/06 FIX: 等待连接就绪（最多等待connectTimeout时间）
+    const maxWaitTime = 5000; // 最多等待5秒
+    const checkInterval = 100; // 每100ms检查一次
+    let waited = 0;
+    
+    while (waited < maxWaitTime) {
+      // 检查状态
+      if (this.client.status === 'ready') {
+        try {
+          // 执行ping验证
+          const result = await this.client.ping();
+          return result === 'PONG';
+        } catch (err) {
+          console.warn('[RedisStore] Ping failed:', err instanceof Error ? err.message : String(err));
+          return false;
+        }
+      }
+      
+      // 如果状态是'connect'或'connecting'，继续等待
+      if (this.client.status === 'connect' || this.client.status === 'connecting') {
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+        waited += checkInterval;
+        continue;
+      }
+      
+      // 其他状态（end、close等）表示连接失败
+      if (this.client.status === 'end' || this.client.status === 'close') {
+        console.error('[RedisStore] Connection ended/closed');
+        return false;
+      }
+      
+      // 未知状态，继续等待
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+      waited += checkInterval;
+    }
+    
+    console.error(`[RedisStore] Timeout waiting for connection (waited ${waited}ms, status: ${this.client.status})`);
+    return false;
+  }
+
+  /**
+   * 测试连接
+   */
+  async ping(): Promise<boolean> {
+    if (!this.client) return false;
+    try {
+      const result = await this.client.ping();
+      return result === 'PONG';
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 获取值
+   */
+  async get(key: string): Promise<string | null> {
+    if (!this.client) return null;
+    const result = await this.client.get(key);
+    return result;
+  }
+
+  /**
+   * 设置值
+   */
+  async set(key: string, value: string, ttl?: number): Promise<void> {
+    if (!this.client) return;
+    if (ttl !== undefined && ttl > 0) {
+      // TTL转换为毫秒，ioredis使用毫秒
+      await this.client.set(key, value, 'PX', ttl);
+    } else {
+      await this.client.set(key, value);
+    }
+  }
+
+  /**
+   * 删除键
+   */
+  async del(key: string): Promise<void> {
+    if (!this.client) return;
+    await this.client.del(key);
+  }
+
+  /**
+   * 清空数据库（使用SCAN + DEL，避免阻塞）
+   */
+  async flush(pattern: string): Promise<void> {
+    if (!this.client) return;
+    
+    let cursor = '0';
+    do {
+      const result = await this.client.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = result[0];
+      const keys = result[1];
+      
+      if (keys.length > 0) {
+        await this.client.del(...keys);
+      }
+    } while (cursor !== '0');
+  }
+
+  /**
+   * 扫描键
+   */
+  async scanKeys(pattern: string): Promise<string[]> {
+    if (!this.client) return [];
+    
+    const keys: string[] = [];
+    let cursor = '0';
+    
+    do {
+      const result = await this.client.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = result[0];
+      keys.push(...result[1]);
+    } while (cursor !== '0');
+    
+    return keys;
+  }
+
+  /**
+   * 检查键是否存在
+   */
+  async exists(key: string): Promise<boolean> {
+    if (!this.client) return false;
+    const result = await this.client.exists(key);
+    return result === 1;
+  }
+
+  /**
+   * 获取TTL（毫秒）
+   */
+  async ttl(key: string): Promise<number> {
+    if (!this.client) return -1;
+    // pttl返回毫秒
+    return await this.client.pttl(key);
   }
 }
 
@@ -328,15 +586,16 @@ class MemoryStorageAdapter implements StorageAdapter {
 
 /**
  * Redis存储实现
- * 支持Upstash Redis REST API
+ * 支持Upstash Redis REST API 和 标准Redis协议
  */
 export class RedisStore implements StorageAdapter {
-  private client: UpstashRedisClient | null = null;
+  private client: UpstashRedisClient | StandardRedisClient | null = null;
   private fallbackAdapter: MemoryStorageAdapter;
   private config: RedisConfig;
   private state: ConnectionState = ConnectionState.DISCONNECTED;
   private connectionError: Error | null = null;
   private useFallback: boolean = false;
+  private isStandardRedis: boolean = false;
 
   constructor(config?: Partial<RedisConfig>) {
     // 从环境变量读取配置
@@ -352,9 +611,19 @@ export class RedisStore implements StorageAdapter {
 
     this.fallbackAdapter = new MemoryStorageAdapter(this.config.keyPrefix);
     
-    // 如果有配置Redis，初始化客户端
-    if (this.config.url && this.isUpstashUrl(this.config.url)) {
-      this.client = new UpstashRedisClient(this.config);
+    // B-02/04 FIX: 支持标准Redis协议和Upstash REST API
+    if (this.config.url) {
+      if (this.isUpstashUrl(this.config.url)) {
+        // Upstash REST API
+        this.client = new UpstashRedisClient(this.config);
+        this.isStandardRedis = false;
+      } else if (this.isStandardRedisUrl(this.config.url)) {
+        // 标准Redis协议 (redis:// 或 rediss://)
+        const standardClient = new StandardRedisClient(this.config);
+        standardClient.connect();
+        this.client = standardClient;
+        this.isStandardRedis = true;
+      }
     }
   }
 
@@ -390,6 +659,13 @@ export class RedisStore implements StorageAdapter {
   }
 
   /**
+   * B-02/04 FIX: 判断是否为标准Redis URL
+   */
+  private isStandardRedisUrl(url: string): boolean {
+    return url.startsWith('redis://') || url.startsWith('rediss://');
+  }
+
+  /**
    * 获取完整键名
    */
   private getFullKey(key: string): string {
@@ -407,47 +683,104 @@ export class RedisStore implements StorageAdapter {
   }
 
   /**
-   * 初始化连接
+   * B-02/04 FIX: 初始化方法（供TieredFallback调用）
    * @returns 是否成功连接
    */
+  async initialize(): Promise<boolean> {
+    return this.connect();
+  }
+
+  /**
+   * 关闭方法（供TieredFallback调用）
+   */
+  async close(): Promise<void> {
+    return this.disconnect();
+  }
+
+  /**
+   * B-02/04 FIX: 健康检查方法（供TieredFallback调用）
+   */
+  async healthCheck(): Promise<boolean> {
+    return this.isConnected();
+  }
+
+  /**
+   * 获取可用性状态（供TieredFallback调用）
+   */
+  get isAvailable(): boolean {
+    return this.isConnected();
+  }
+
+  /**
+   * B-02/06 FIX: 初始化连接，优化诊断日志和连接可靠性
+   * B-01/09 FIX: 修复连接状态返回值，确保TieredFallback正确处理
+   * @returns 是否成功连接（仅当真实Redis连接成功时返回true）
+   */
   async connect(): Promise<boolean> {
-    if (this.state === ConnectionState.CONNECTED) {
+    if (this.state === ConnectionState.CONNECTED && !this.useFallback) {
+      console.log('[RedisStore] Already connected to Redis');
       return true;
     }
 
     if (!this.client) {
-      console.log('[RedisStore] No Redis config, using memory fallback');
+      console.log('[RedisStore] No Redis config available, using memory fallback');
       this.useFallback = true;
+      // FIX: 当使用fallback时，返回false表示真实Redis未连接
+      // 但保持state为CONNECTED以便getAdapter()能正常工作
       this.state = ConnectionState.CONNECTED;
-      return true;
+      return false;  // FIX: 返回false表示没有真实Redis连接
     }
 
     this.state = ConnectionState.CONNECTING;
+    console.log(`[RedisStore] Attempting to connect with timeout ${this.config.connectTimeout}ms...`);
     
     try {
+      // B-02/06 FIX: 标准Redis需要验证连接状态
+      if (this.isStandardRedis && this.client instanceof StandardRedisClient) {
+        const isReady = await this.client.ensureConnected();
+        if (!isReady) {
+          throw new Error('Redis client not ready');
+        }
+      }
+
+      // B-02/06 FIX: 使用更长的超时时间进行ping测试
+      const pingTimeout = Math.max(this.config.connectTimeout || 5000, 5000);
+      
       const isConnected = await Promise.race([
         this.client.ping(),
         new Promise<boolean>((_, reject) => 
-          setTimeout(() => reject(new Error('Connection timeout')), 
-          this.config.connectTimeout)
+          setTimeout(() => reject(new Error(`Connection timeout after ${pingTimeout}ms`)), 
+          pingTimeout)
         ),
       ]);
 
       if (isConnected) {
+        // B-02/06 FIX: 连接成功，确保状态正确设置且不回退到fallback
         this.state = ConnectionState.CONNECTED;
         this.connectionError = null;
-        this.useFallback = false;
-        console.log('[RedisStore] Connected to Redis successfully');
+        this.useFallback = false; // 明确设置为false，确保使用Redis而不是fallback
+        console.log('[RedisStore] ✅ Connected to Redis successfully - using Redis persistence');
+        console.log(`[RedisStore] Fallback status: ${this.useFallback ? 'ENABLED' : 'DISABLED'}`);
         return true;
       } else {
-        throw new Error('Ping failed');
+        throw new Error('Ping failed - no PONG response');
       }
     } catch (error) {
       this.state = ConnectionState.ERROR;
       this.connectionError = error instanceof Error ? error : new Error(String(error));
+      
+      // B-02/06 FIX: 连接失败时输出详细错误信息
+      console.error('[RedisStore] ❌ Failed to connect to Redis:');
+      console.error(`  Error: ${this.connectionError.message}`);
+      console.error(`  URL: ${this.config.url?.replace(/:\/\/[^:]+:/, '://***:***@') || 'not set'}`);
+      console.error(`  ConnectTimeout: ${this.config.connectTimeout}ms`);
+      console.error(`  MaxRetries: ${this.config.maxRetries}`);
+      console.warn('[RedisStore] Falling back to memory storage');
+      
+      // FIX: 即使连接失败，也启用fallback以便继续工作
       this.useFallback = true;
-      console.warn('[RedisStore] Failed to connect to Redis, using memory fallback:', this.connectionError.message);
-      return false;
+      this.state = ConnectionState.CONNECTED;  // 允许fallback工作
+      return false;  // FIX: 返回false表示真实Redis未连接
     }
   }
 
@@ -456,15 +789,31 @@ export class RedisStore implements StorageAdapter {
    */
   async disconnect(): Promise<void> {
     this.state = ConnectionState.DISCONNECTED;
+    
+    // B-02/04 FIX: 正确断开标准Redis连接
+    if (this.isStandardRedis && this.client instanceof StandardRedisClient) {
+      await this.client.disconnect();
+    }
+    
     this.client = null;
     this.fallbackAdapter.destroy();
   }
 
   /**
    * 检查是否已连接
+   * B-01/09 FIX: 即使使用fallback也返回true，确保TieredFallback能正常工作
    */
   isConnected(): boolean {
+    // FIX: 只要state是CONNECTED就返回true，无论是否使用fallback
+    // 这样TieredFallback不会跳过Redis层，而是让RedisStore自己处理fallback
     return this.state === ConnectionState.CONNECTED;
+  }
+
+  /**
+   * B-01/09 FIX: 检查是否有真实的Redis连接（非fallback）
+   */
+  hasRealRedisConnection(): boolean {
+    return this.state === ConnectionState.CONNECTED && !this.useFallback;
   }
 
   /**

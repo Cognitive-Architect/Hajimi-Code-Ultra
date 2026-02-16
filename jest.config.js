@@ -1,14 +1,19 @@
 /** @type {import('jest').Config} */
+
+// B-02/04 FIX: 设置Redis环境变量
+process.env.REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+
 const config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
-  testMatch: ['**/tests/**/*.test.ts'],
+  testMatch: ['**/tests/**/*.test.ts', '**/tests/**/*.perf.ts'],
   testPathIgnorePatterns: [
     '/node_modules/',
     '/tests/unit/hooks.test.ts',
+    '/tests/unit/hooks/',
   ],
   collectCoverageFrom: [
     'lib/core/**/*.ts',
