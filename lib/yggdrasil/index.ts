@@ -58,6 +58,10 @@ export { gitRollbackAdapter, GitRollbackAdapter } from './git-rollback-adapter';
 export { governanceRollbackService, GovernanceRollbackService } from './governance-rollback-service';
 export { branchingConflictResolver, BranchingConflictResolver } from './branching-conflict-resolver';
 
+// P2债务清偿 - DEBT-CLEARANCE-001
+export { RedisWebSocketAdapter } from './ws-redis-adapter';
+export { LocalSemanticCompressor, localSemanticCompressor } from './semantic-local-compressor';
+
 // ==================== 统一控制器 ====================
 import { 
   RegenerateRequest, 
