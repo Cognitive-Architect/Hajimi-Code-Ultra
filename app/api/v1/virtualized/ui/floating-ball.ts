@@ -205,4 +205,3 @@ export class FloatingBall {
 }
 
 export const floatingBall = new FloatingBall();
-export { SHORTCUTS };

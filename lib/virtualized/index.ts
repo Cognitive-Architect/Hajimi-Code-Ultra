@@ -7,8 +7,8 @@
  * @version 1.0.0
  */
 
-// 核心类型
-export {
+// 核心类型 - 显式 export type 以兼容 isolatedModules
+export type {
   BNFCommand,
   BNFCommandType,
   AgentState,
@@ -17,12 +17,16 @@ export {
   IVirtualAgent,
   AgentSnapshot,
   IsolationReport,
-  ProtocolError,
-  IsolationViolationError,
   AgentPoolConfig,
-  DEFAULT_POOL_CONFIG,
   IVirtualAgentPool,
   IBNFParser,
+} from './types';
+
+// 核心值/常量 - 保持普通 export
+export {
+  ProtocolError,
+  IsolationViolationError,
+  DEFAULT_POOL_CONFIG,
 } from './types';
 
 // VirtualAgentPool核心引擎
@@ -35,21 +39,33 @@ export {
 } from './agent-pool';
 
 // 三级Checkpoint服务
-export {
+export type {
   CheckpointLevel,
   Checkpoint,
   CheckpointMetadata,
-  ICheckpointService,
+} from './checkpoint';
+
+export {
   CheckpointService,
   defaultCheckpointService,
 } from './checkpoint';
 
 // ResilienceMonitor韧性监控
+export type {
+  MetricType,
+  DegradationRecommendation,
+  HealthStatus,
+  MetricDataPoint,
+  SlidingWindowStats,
+  HealthReport,
+  PrometheusMetrics,
+  PanelIntegrationData,
+  MonitorConfig,
+} from './monitor';
+
 export {
-  ResilienceMetrics,
-  IResilienceMonitor,
   ResilienceMonitor,
-  defaultResilienceMonitor,
+  defaultMonitor,
 } from './monitor';
 
 // BNF协议解析器（已包含在agent-pool中导出）

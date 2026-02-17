@@ -2,7 +2,7 @@
  * A2A Service Core Module
  * 
  * B-04 A2A消息服务核心实现
- * 使用TSA存储，消息TTL 7天
+ * 使用TSA存储，消息TTL 7�?
  */
 
 import { tsa } from '@/lib/tsa';
@@ -25,7 +25,7 @@ import {
 const STORAGE_KEY_PREFIX = 'a2a:message:';
 const STORAGE_INDEX_KEY = 'a2a:session_index:';
 
-/** A2A服务类 */
+/** A2A服务�?*/
 export class A2AService {
   private config: Required<A2AServiceConfig>;
   private listeners: Set<MessageListener> = new Set();
@@ -39,7 +39,7 @@ export class A2AService {
   }
 
   /**
-   * 初始化服务
+   * 初始化服�?
    */
   async init(): Promise<void> {
     if (this.isInitialized) {
@@ -50,23 +50,23 @@ export class A2AService {
   }
 
   /**
-   * 获取存储键
+   * 获取存储�?
    */
   private getStorageKey(messageId: string): string {
     return `${STORAGE_KEY_PREFIX}${messageId}`;
   }
 
   /**
-   * 获取会话索引键
+   * 获取会话索引�?
    */
   private getSessionIndexKey(sessionId: string): string {
     return `${STORAGE_INDEX_KEY}${sessionId}`;
   }
 
   /**
-   * 发送消息
-   * @param request 发送消息请求
-   * @returns 创建的消息
+   * 发送消�?
+   * @param request 发送消息请�?
+   * @returns 创建的消�?
    */
   async sendMessage(request: SendMessageRequest): Promise<A2AMessage> {
     await this.ensureInitialized();
@@ -92,16 +92,16 @@ export class A2AService {
     // 更新会话索引
     await this.addToSessionIndex(message.sessionId, message.id);
 
-    // 通知订阅者
+    // 通知订阅�?
     this.notifyListeners(message);
 
-    console.log(`[A2AService] 消息已发送: ${message.id}`);
+    console.log(`[A2AService] 消息已发�? ${message.id}`);
     return message;
   }
 
   /**
-   * 发送消息（流式）
-   * @param request 发送消息请求
+   * 发送消息（流式�?
+   * @param request 发送消息请�?
    * @param onChunk 流式回调
    */
   async sendMessageStream(
@@ -110,7 +110,7 @@ export class A2AService {
   ): Promise<A2AMessage> {
     await this.ensureInitialized();
 
-    // 首先发送完整消息
+    // 首先发送完整消�?
     const message = await this.sendMessage(request);
 
     // 模拟流式响应
@@ -153,7 +153,7 @@ export class A2AService {
     // 获取会话消息ID列表
     const messageIds = await this.getSessionMessageIds(sessionId);
     
-    // 按时间排序
+    // 按时间排�?
     const sortedIds = order === 'asc' 
       ? messageIds 
       : [...messageIds].reverse();
@@ -189,7 +189,7 @@ export class A2AService {
 
   /**
    * 订阅消息
-   * @param listener 消息监听器
+   * @param listener 消息监听�?
    * @returns 取消订阅函数
    */
   subscribe(listener: MessageListener): () => void {
@@ -203,7 +203,7 @@ export class A2AService {
 
   /**
    * 取消订阅
-   * @param listener 消息监听器
+   * @param listener 消息监听�?
    */
   unsubscribe(listener: MessageListener): void {
     this.listeners.delete(listener);
@@ -214,7 +214,7 @@ export class A2AService {
    * @param messageId 消息ID
    * @returns 消息或null
    */
-  async getMessage(messageId: string): Promise<A2AMessage | null> {
+  async getMessage(messageId: string): Promise<A2AMessage | undefined> {
     await this.ensureInitialized();
     return tsa.get<A2AMessage>(this.getStorageKey(messageId));
   }
@@ -228,7 +228,7 @@ export class A2AService {
     
     const message = await this.getMessage(messageId);
     if (message) {
-      await tsa.delete(this.getStorageKey(messageId));
+      await tsa.remove(this.getStorageKey(messageId));
       await this.removeFromSessionIndex(message.sessionId, messageId);
     }
   }
@@ -265,7 +265,7 @@ export class A2AService {
   }
 
   /**
-   * 添加到会话索引
+   * 添加到会话索�?
    */
   private async addToSessionIndex(sessionId: string, messageId: string): Promise<void> {
     const indexKey = this.getSessionIndexKey(sessionId);
@@ -278,13 +278,13 @@ export class A2AService {
   }
 
   /**
-   * 从会话索引移除
+   * 从会话索引移�?
    */
   private async removeFromSessionIndex(sessionId: string, messageId: string): Promise<void> {
     const indexKey = this.getSessionIndexKey(sessionId);
     const index = await tsa.get<string[]>(indexKey) ?? [];
     
-    const newIndex = index.filter(id => id !== messageId);
+    const newIndex = index.filter((id: string) => id !== messageId);
     await tsa.set(indexKey, newIndex, { ttl: this.config.messageTtl });
   }
 
@@ -304,13 +304,13 @@ export class A2AService {
       try {
         listener(message);
       } catch (error) {
-        console.error('[A2AService] 监听器执行失败:', error);
+        console.error('[A2AService] 监听器执行失�?', error);
       }
     });
   }
 
   /**
-   * 将内容分割成块
+   * 将内容分割成�?
    */
   private splitContentIntoChunks(content: string, chunkSize = 10): string[] {
     const chunks: string[] = [];

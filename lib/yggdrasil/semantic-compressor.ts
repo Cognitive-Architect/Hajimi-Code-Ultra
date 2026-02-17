@@ -223,7 +223,7 @@ class SemanticCompressor {
    */
   private kMeansClustering(
     contents: string[],
-    embeddings: number[][]
+    embeddings: number[][],
     clusterCount: number
   ): SemanticCluster[] {
     // 简化实现：基于相似度的贪心聚类

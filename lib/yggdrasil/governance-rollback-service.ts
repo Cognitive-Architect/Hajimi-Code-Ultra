@@ -144,7 +144,7 @@ class GovernanceRollbackService {
       console.log(`[GovernanceRollback] 检查提案: ${proposalId}`);
 
       // 获取投票结果
-      const voteResult = await this.voteService.getResults(proposalId);
+      const voteResult = await this.voteService.getVoteStats(proposalId);
       const rollbackProposal = await tsa.get<GovernanceRollbackProposal>(
         `${ROLLBACK_PROPOSAL_PREFIX}${proposalId}`
       );
@@ -179,7 +179,7 @@ class GovernanceRollbackService {
       rollbackProposal.voteResult = {
         totalVotes: voteResult.totalVotes,
         approveCount: Math.floor(voteResult.totalWeight * voteResult.approvalRate),
-        rejectCount: Math.floor(voteResult.totalWeight * voteResult.rejectionRate),
+        rejectCount: Math.floor((voteResult.totalWeight - voteResult.approveWeight) * voteResult.rejectionRate),
         approvalRate: voteResult.approvalRate,
       };
 
@@ -216,7 +216,7 @@ class GovernanceRollbackService {
   async getProposalStatus(proposalId: string): Promise<{
     exists: boolean;
     proposal?: GovernanceRollbackProposal;
-    voteResult?: Awaited<ReturnType<VoteService['getResults']>>;
+    voteResult?: Awaited<ReturnType<VoteService['getVoteStats']>>;
   }> {
     const proposal = await tsa.get<GovernanceRollbackProposal>(
       `${ROLLBACK_PROPOSAL_PREFIX}${proposalId}`
@@ -226,7 +226,7 @@ class GovernanceRollbackService {
       return { exists: false };
     }
 
-    const voteResult = await this.voteService.getResults(proposalId);
+    const voteResult = await this.voteService.getVoteStats(proposalId);
 
     return {
       exists: true,
@@ -239,7 +239,7 @@ class GovernanceRollbackService {
    * 列出活跃的Rollback提案
    */
   async listActiveProposals(): Promise<GovernanceRollbackProposal[]> {
-    const keys = tsa.keys().filter(k => k.startsWith(ROLLBACK_PROPOSAL_PREFIX));
+    const keys = Array.from(tsa.keys()).filter((k: string) => k.startsWith(ROLLBACK_PROPOSAL_PREFIX));
     const proposals: GovernanceRollbackProposal[] = [];
 
     for (const key of keys) {
@@ -265,7 +265,7 @@ class GovernanceRollbackService {
    */
   private async unlockBranch(sessionId: string): Promise<boolean> {
     try {
-      await tsa.delete(`${ROLLBACK_LOCK_PREFIX}${sessionId}`);
+      await tsa.remove(`${ROLLBACK_LOCK_PREFIX}${sessionId}`);
       return true;
     } catch {
       return false;

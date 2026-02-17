@@ -18,6 +18,7 @@ export { MockAdapter } from './adapters/mock';
 export { SecondMeAdapter } from './adapters/secondme';
 export { OpenRouterAdapter } from './adapters/openrouter-real';
 export { OpenRouterIPDirectAdapter } from './adapters/openrouter-ip-direct';
+export { LCRLocalAdapter, LCRLocalConfig, LCRLocalError } from './adapters/lcr-local';
 
 // ========== 工厂导出 ==========
 export { createAdapter, getAvailableAdapters, isValidAdapterType } from './factory';

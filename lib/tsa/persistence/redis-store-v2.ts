@@ -1333,7 +1333,7 @@ export class RedisStore implements StorageAdapter {
     try {
       const fullPattern = `${this.config.keyPrefix}${pattern ?? '*'}`;
       const keys = await this.client!.scanKeys(fullPattern);
-      const prefixLen = this.config.keyPrefix.length;
+      const prefixLen = this.config.keyPrefix!.length;
       return keys.map(k => k.slice(prefixLen));
     } catch (error) {
       console.warn('[RedisStore V2] Keys error:', error);

@@ -123,9 +123,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!result.success) {
+    if (!result || !result.success) {
       return NextResponse.json(
-        { error: result.error, data: result.data },
+        { error: result?.error, data: result?.data },
         { status: 500 }
       );
     }

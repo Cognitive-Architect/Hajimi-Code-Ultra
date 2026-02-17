@@ -360,7 +360,7 @@ export class LRUManager implements ILRUManager {
   getStats(): {
     policy: LRUPolicy;
     memoryStats: { usedEntries: number; totalCapacity: number };
-    accessStats: ReturnType<typeof this.getAccessStats>;
+    accessStats: { totalRecords: number; totalAccesses: number; averageWeight: number; hottestKey?: { key: string; count: number } };
     memoryPressure: MemoryPressure;
   } {
     return {

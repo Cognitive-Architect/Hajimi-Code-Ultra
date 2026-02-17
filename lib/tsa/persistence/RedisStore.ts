@@ -343,7 +343,7 @@ class UpstashRedisClient {
   private retryInterval: number;
 
   constructor(config: RedisConfig) {
-    this.url = config.url;
+    this.url = config.url!;
     this.token = config.token || '';
     this.maxRetries = config.maxRetries ?? 3;
     this.retryInterval = config.retryInterval ?? 1000;
@@ -990,7 +990,7 @@ export class RedisStore implements StorageAdapter {
       const fullPattern = `${this.config.keyPrefix}${pattern ?? '*'}`;
       const keys = await this.client!.scanKeys(fullPattern);
       // 移除前缀
-      const prefixLen = this.config.keyPrefix.length;
+      const prefixLen = this.config.keyPrefix!.length;
       return keys.map(k => k.slice(prefixLen));
     } catch (error) {
       console.warn('[RedisStore] Keys error, switching to fallback:', error);

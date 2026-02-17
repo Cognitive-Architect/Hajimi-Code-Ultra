@@ -129,7 +129,7 @@ export class ProposalService extends EventEmitter {
     };
   }
 
-  async getProposal(id: string): Promise<Proposal | null> {
+  async getProposal(id: string): Promise<Proposal | undefined> {
     const key = `${PROPOSAL_KEY_PREFIX}${id}`;
     return await tsa.get<Proposal>(key);
   }

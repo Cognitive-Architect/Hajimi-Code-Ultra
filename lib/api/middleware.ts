@@ -264,3 +264,6 @@ export function composeMiddleware(...middlewares: MiddlewareFn[]) {
 
 export { HajimiError };
 export * from './errors';
+
+// 默认导出：中间件组合函数
+export { composeMiddleware as default };
