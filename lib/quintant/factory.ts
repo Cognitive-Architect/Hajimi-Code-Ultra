@@ -7,11 +7,12 @@
  * @version 1.4.0
  */
 
-import { A2AAdapter, QuintantConfig } from './types';
+import { QuintantAdapter } from './types';
 import { MockAdapter } from './adapters/mock';
 import { SecondMeAdapter } from './adapters/secondme';
 import { OpenRouterAdapter } from './adapters/openrouter-real';
 import { OpenRouterIPDirectAdapter } from './adapters/openrouter-ip-direct';
+import { LCRLocalAdapter, LCRLocalConfig } from './adapters/lcr-local';
 
 export type AdapterType = 
   | 'mock' 
@@ -19,9 +20,13 @@ export type AdapterType =
   | 'openrouter' 
   | 'openrouter-real'
   | 'ip-direct'
-  | 'ipdirect';
+  | 'ipdirect'
+  | 'lcr-local'
+  | 'lcrlocal';
 
-export interface FactoryConfig extends QuintantConfig {
+export interface FactoryConfig {
+  apiKey?: string;
+  baseUrl?: string;
   adapterType: AdapterType;
   // IP直连专用配置
   ipDirectConfig?: {
@@ -29,6 +34,8 @@ export interface FactoryConfig extends QuintantConfig {
     backupIPs?: string[];
     tlsBypass?: boolean;
   };
+  // LCR本地运行时专用配置
+  lcrLocalConfig?: Partial<LCRLocalConfig>;
 }
 
 /**
@@ -38,7 +45,7 @@ export interface FactoryConfig extends QuintantConfig {
  * 自测: FAB-002 可成功实例化
  * 自测: FAB-003 类型检查通过
  */
-export function createAdapter(type: AdapterType, config: FactoryConfig): A2AAdapter {
+export function createAdapter(type: AdapterType, config: FactoryConfig): QuintantAdapter {
   switch (type) {
     case 'mock':
       return new MockAdapter();
@@ -85,8 +92,26 @@ export function createAdapter(type: AdapterType, config: FactoryConfig): A2AAdap
         },
       });
     
+    case 'lcr-local':
+    case 'lcrlocal':
+      // LCR本地运行时适配器，支持离线优先和Fallback策略
+      return new LCRLocalAdapter(config.lcrLocalConfig || {
+        endpoint: process.env.LCR_LOCAL_ENDPOINT || 'http://localhost:11434',
+        defaultModel: 'llama3',
+        availableModels: ['llama3', 'llama2', 'mistral', 'codellama'],
+        maxContextLength: 8192,
+        timeout: 30000,
+        healthCheckInterval: 30000,
+        offlineMode: false,
+        fallback: {
+          enabled: true,
+          cloudAdapter: 'ip-direct',
+          fallbackThreshold: 3,
+        },
+      });
+    
     default:
-      throw new Error(`Unknown adapter type: ${type}. Supported: mock, secondme, openrouter, ip-direct`);
+      throw new Error(`Unknown adapter type: ${type}. Supported: mock, secondme, openrouter, ip-direct, lcr-local`);
   }
 }
 
@@ -99,6 +124,7 @@ export function getAvailableAdapters(): Array<{ type: AdapterType; name: string;
     { type: 'secondme', name: 'SecondMe', description: 'SecondMe A2A协议适配器' },
     { type: 'openrouter', name: 'OpenRouter', description: 'OpenRouter标准API适配器' },
     { type: 'ip-direct', name: 'IP Direct', description: 'OpenRouter IP直连适配器（TLS三层防护）' },
+    { type: 'lcr-local', name: 'LCR Local', description: 'LCR本地运行时适配器（离线优先+Fallback）' },
   ];
 }
 
@@ -106,7 +132,7 @@ export function getAvailableAdapters(): Array<{ type: AdapterType; name: string;
  * 验证适配器类型是否有效
  */
 export function isValidAdapterType(type: string): type is AdapterType {
-  return ['mock', 'secondme', 'openrouter', 'openrouter-real', 'ip-direct', 'ipdirect'].includes(type);
+  return ['mock', 'secondme', 'openrouter', 'openrouter-real', 'ip-direct', 'ipdirect', 'lcr-local', 'lcrlocal'].includes(type);
 }
 
 export default { createAdapter, getAvailableAdapters, isValidAdapterType };

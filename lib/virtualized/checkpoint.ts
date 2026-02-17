@@ -329,6 +329,38 @@ class GitArchiveAdapter {
 }
 
 /**
+ * Checkpoint服务接口
+ */
+export interface ICheckpointService {
+  /** 初始化服务 */
+  init(): Promise<void>;
+  /** 创建L0微检查点（内存快照） */
+  createL0(agent: IVirtualAgent): Promise<string>;
+  /** 创建L1任务检查点 */
+  createL1(agent: IVirtualAgent): Promise<Checkpoint>;
+  /** 创建L2持久检查点 */
+  createL2(agent: IVirtualAgent): Promise<Checkpoint>;
+  /** 创建L3 Git归档检查点 */
+  createL3(agent: IVirtualAgent): Promise<Checkpoint>;
+  /** 恢复Agent状态 */
+  resume(checkpointId: string): Promise<RestoreResult>;
+  /** YGGDRASIL回滚 */
+  rollback(targetLevel: CheckpointLevel, agentId: string): Promise<Checkpoint | null>;
+  /** 获取性能指标 */
+  getMetrics(): CheckpointMetrics;
+  /** 获取指定Agent的所有Checkpoint */
+  getCheckpointsByAgent(agentId: string): Checkpoint[];
+  /** 获取指定Checkpoint */
+  getCheckpoint(id: string): Checkpoint | undefined;
+  /** 删除Checkpoint */
+  deleteCheckpoint(id: string): Promise<boolean>;
+  /** 清理过期Checkpoint */
+  cleanup(): Promise<number>;
+  /** 清空所有Checkpoint */
+  clear(): Promise<void>;
+}
+
+/**
  * Checkpoint服务
  * 
  * 三级Checkpoint实现:
@@ -337,7 +369,7 @@ class GitArchiveAdapter {
  * - L2: 磁盘持久化 (IndexedDB)
  * - L3: Git归档 (自动commit墓碑日志)
  */
-export class CheckpointService {
+export class CheckpointService implements ICheckpointService {
   private config: CheckpointConfig;
   private checkpoints: Map<string, Checkpoint> = new Map();
   private l0Snapshots: Map<string, AgentSnapshot> = new Map();
@@ -568,7 +600,10 @@ export class CheckpointService {
       
       // 2. 尝试从IndexedDB加载
       if (!checkpoint) {
-        checkpoint = await this.indexedDB.load(checkpointId);
+        const fromDB = await this.indexedDB.load(checkpointId);
+        if (fromDB) {
+          checkpoint = fromDB;
+        }
       }
       
       if (!checkpoint) {

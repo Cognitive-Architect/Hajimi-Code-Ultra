@@ -81,7 +81,7 @@ class RegenerateService {
       let clearedCount = 0;
       for (const key of keysToClear) {
         try {
-          await tsa.delete(key);
+          await tsa.remove(key);
           clearedCount++;
         } catch (error) {
           console.warn(`[Regenerate] 删除键失败: ${key}`, error);

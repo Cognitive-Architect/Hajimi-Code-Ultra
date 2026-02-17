@@ -75,7 +75,7 @@ export class VoteService {
     // 清理所有提案数据
     for (const id of this.proposals.keys()) {
       const key = `${PROPOSAL_KEY_PREFIX}${id}`;
-      await tsa.delete(key);
+      await tsa.remove(key);
     }
     this.proposals.clear();
     await tsa.set(ACTIVE_PROPOSALS_KEY, [], { tier: 'STAGING' });

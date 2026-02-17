@@ -290,7 +290,7 @@ export class TieredFallback implements StorageAdapter {
   private currentTier: TierLevel = TierLevel.REDIS;
   private config: FallbackConfig;
   private logger: ILogger;
-  private recoverTimer: number | null = null;
+  private recoverTimer: ReturnType<typeof setInterval> | null = null;
   private eventHandlers: FallbackEventHandler[] = [];
   private _isConnected = false;
 

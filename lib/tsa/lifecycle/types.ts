@@ -207,7 +207,7 @@ export interface IHookManager {
   /** 注册钩子 */
   register<T>(type: LifecycleHookType, hook: LifecycleHook<T>): () => void;
   /** 触发钩子 */
-  emit<T>(type: LifecycleHookType, context: T): Promise<void>;
+  emit<T>(type: LifecycleHookType, context: T): Promise<HookExecutionResult[]>;
   /** 检查是否有钩子 */
   hasHook(type: LifecycleHookType): boolean;
   /** 清除所有钩子 */

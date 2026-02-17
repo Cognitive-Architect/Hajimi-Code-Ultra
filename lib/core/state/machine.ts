@@ -325,7 +325,7 @@ export class StateMachine {
   /**
    * B-01/09 FIX: 验证持久化一致性
    */
-  async verifyPersistence(): Promise<{ consistent: boolean; memoryState: PowerState; redisState: PowerState | null }> {
+  async verifyPersistence(): Promise<{ consistent: boolean; memoryState: PowerState; redisState: PowerState | undefined }> {
     const memoryState = this.currentState;
     const redisState = await tsa.get<PowerState>(this.getStateKey());
     

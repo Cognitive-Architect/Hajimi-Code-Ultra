@@ -137,7 +137,7 @@ class BranchingConflictResolver {
 
     try {
       // 获取所有分支键
-      const keys = tsa.keys().filter(k => 
+      const keys = Array.from(tsa.keys()).filter((k: string) => 
         k.includes(`branch:${branchId}:`) ||
         k.includes(`transient:${branchId}:`)
       );
@@ -148,7 +148,7 @@ class BranchingConflictResolver {
         : keys;
 
       for (const key of keysToDelete) {
-        await tsa.delete(key);
+        await tsa.remove(key);
         result.deletedKeys++;
         result.freedBytes += 1024; // 估算
       }
@@ -197,9 +197,9 @@ class BranchingConflictResolver {
    * 获取分支的所有键
    */
   private async getBranchKeys(branchId: string): Promise<string[]> {
-    const allKeys = tsa.keys();
+    const allKeys = Array.from(tsa.keys());
     return allKeys
-      .filter(k => k.includes(`branch:${branchId}:`) || k.includes(`transient:${branchId}:`))
+      .filter((k: string) => k.includes(`branch:${branchId}:`) || k.includes(`transient:${branchId}:`))
       .map(k => k.replace(`branch:${branchId}:`, '').replace(`transient:${branchId}:`, ''));
   }
 

@@ -39,7 +39,7 @@ export type StateChangeListener = (event: StateChangeEvent) => void | Promise<vo
 export interface PersistenceVerificationResult {
   success: boolean;
   memoryState: PowerState;
-  redisState: PowerState | null;
+  redisState: PowerState | undefined;
   consistent: boolean;
   error?: string;
 }
@@ -336,7 +336,7 @@ export class TSAStateMachineV2 {
         return {
           success: false,
           memoryState,
-          redisState,
+          redisState: redisState ?? undefined,
           consistent: false,
           error: `State mismatch: memory=${memoryState}, redis=${redisState}`,
         };
@@ -352,7 +352,7 @@ export class TSAStateMachineV2 {
       return {
         success: false,
         memoryState: this.currentState,
-        redisState: null,
+        redisState: undefined,
         consistent: false,
         error: error instanceof Error ? error.message : String(error),
       };
@@ -480,7 +480,7 @@ export class TSAOrchestratorV2 {
       return {
         success: false,
         memoryState: 'IDLE',
-        redisState: null,
+        redisState: undefined,
         consistent: false,
         error: 'Machine not found',
       };
@@ -494,7 +494,7 @@ export class TSAOrchestratorV2 {
     return {
       success: consistent,
       memoryState,
-      redisState,
+      redisState: redisState ?? undefined,
       consistent,
       error: consistent ? undefined : `State mismatch: memory=${memoryState}, redis=${redisState}`,
     };

@@ -259,7 +259,7 @@ class RollbackService {
    */
   async deleteSnapshot(sessionId: string, snapshotId: string): Promise<boolean> {
     const key = `${SNAPSHOT_KEY_PREFIX}${sessionId}:${snapshotId}`;
-    await tsa.delete(key);
+    await tsa.remove(key);
     return true;
   }
 
@@ -295,13 +295,13 @@ class RollbackService {
    */
   private async restoreTransientData(snapshot: RollbackSnapshot): Promise<void> {
     // 清除当前Transient数据
-    const currentKeys = tsa.keys().filter(key => 
+    const currentKeys = Array.from(tsa.keys()).filter((key: string) => 
       key.includes(`session:${snapshot.sessionId}:`) ||
       key.includes('transient')
     );
 
     for (const key of currentKeys) {
-      await tsa.delete(key);
+      await tsa.remove(key);
     }
 
     // TODO: 恢复快照中的Transient数据

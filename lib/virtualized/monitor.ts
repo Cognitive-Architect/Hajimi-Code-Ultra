@@ -125,6 +125,63 @@ export interface PanelIntegrationData {
 }
 
 /**
+ * 韧性指标数据
+ */
+export interface ResilienceMetrics {
+  /** 窗口大小（毫秒） */
+  windowSize: number;
+  /** 数据点数量 */
+  count: number;
+  /** 平均值 */
+  mean: number;
+  /** P95 */
+  p95: number;
+  /** P99 */
+  p99: number;
+}
+
+/**
+ * ResilienceMonitor接口
+ */
+export interface IResilienceMonitor {
+  /** 记录可用性指标 */
+  recordUptime(isUp: boolean): void;
+  /** 记录错误 */
+  recordError(errorType?: string): void;
+  /** 记录成功请求 */
+  recordSuccess(): void;
+  /** 记录Checkpoint延迟 */
+  recordCheckpointLatency(latencyMs: number): void;
+  /** 记录Agent数量 */
+  recordAgentCount(count: number): void;
+  /** 记录内存使用 */
+  recordMemoryUsage(bytes: number): void;
+  /** 获取7天滑动窗口统计 */
+  getSevenDayStats(): {
+    uptime: SlidingWindowStats | null;
+    errorRate: SlidingWindowStats | null;
+    checkpointLatency: SlidingWindowStats | null;
+    agentCount: SlidingWindowStats | null;
+  };
+  /** 获取降级建议 */
+  getDegradationRecommendation(): DegradationRecommendation;
+  /** 获取健康报告 */
+  getHealthReport(): HealthReport;
+  /** 生成Prometheus格式指标 */
+  getPrometheusMetrics(): PrometheusMetrics;
+  /** 获取面板集成数据 */
+  getPanelIntegrationData(contaminationRate?: number): PanelIntegrationData;
+  /** 获取运行时间 */
+  getUptime(): number;
+  /** 获取错误率 */
+  getErrorRate(): number;
+  /** 重置监控数据 */
+  reset(): void;
+  /** 模拟7天数据（用于测试） */
+  simulateSevenDayData(): void;
+}
+
+/**
  * 监控配置
  */
 export interface MonitorConfig {
@@ -250,7 +307,7 @@ class SlidingWindow<T> {
  * - 暴露/metrics端点（Prometheus格式，可选）
  * - 与ID-77压力怪审计面板集成（显示虚拟化隔离度）
  */
-export class ResilienceMonitor {
+export class ResilienceMonitor implements IResilienceMonitor {
   private config: MonitorConfig;
   private uptimeWindow: SlidingWindow<number>;
   private errorRateWindow: SlidingWindow<number>;

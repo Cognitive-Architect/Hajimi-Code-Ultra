@@ -4,6 +4,9 @@
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
+    "strictFunctionTypes": true,
+    "noImplicitAny": true,
+    "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -23,6 +26,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", ".next/types/**/*.ts", "lib/core/**/*.ts", "lib/types/**/*.ts", "lib/api/**/*.ts", "lib/tsa/**/*.ts", "lib/adapters/**/*.ts", "lib/patterns/**/*.ts", "app/api/**/*.ts", "app/hooks/**/*.ts", "patterns/types.ts", "patterns/registry.ts", "patterns/loader.ts", "patterns/index.ts", "patterns/system/roles/*.ts", "tests/unit/state-machine.test.ts", "tests/unit/fabric-loader.test.ts"],
+  "include": ["next-env.d.ts", ".next/types/**/*.ts", "types/**/*.ts", "lib/core/**/*.ts", "lib/types/**/*.ts", "lib/api/**/*.ts", "lib/tsa/**/*.ts", "lib/yggdrasil/**/*.ts", "lib/virtualized/**/*.ts", "lib/adapters/**/*.ts", "lib/patterns/**/*.ts", "app/api/**/*.ts", "app/hooks/**/*.ts", "patterns/types.ts", "patterns/registry.ts", "patterns/loader.ts", "patterns/index.ts", "patterns/system/roles/*.ts", "tests/unit/state-machine.test.ts", "tests/unit/fabric-loader.test.ts"],
   "exclude": ["node_modules", "lib/storage/**/*.ts", "tests/integration/**/*.ts", "tests/unit/governance.test.ts", "tests/unit/a2a.test.ts", "tests/unit/auth.test.ts", "patterns/action/**/*.ts", "patterns/context/**/*.ts", "patterns/system/base-system.ts"]
 }

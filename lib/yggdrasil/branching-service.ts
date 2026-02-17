@@ -112,7 +112,7 @@ class BranchingService {
   /**
    * 获取单个分支
    */
-  async getBranch(branchId: string): Promise<Branch | null> {
+  async getBranch(branchId: string): Promise<Branch | undefined> {
     return await tsa.get<Branch>(`${BRANCH_KEY_PREFIX}${branchId}`);
   }
 
@@ -202,16 +202,16 @@ class BranchingService {
     if (!branch) return false;
 
     // 删除分支数据
-    const keysToDelete = tsa.keys().filter(key => 
+    const keysToDelete = Array.from(tsa.keys()).filter((key: string) => 
       key.includes(`branch:${branchId}:`)
     );
     
     for (const key of keysToDelete) {
-      await tsa.delete(key);
+      await tsa.remove(key);
     }
 
     // 删除分支元数据
-    await tsa.delete(`${BRANCH_KEY_PREFIX}${branchId}`);
+    await tsa.remove(`${BRANCH_KEY_PREFIX}${branchId}`);
     
     return true;
   }
@@ -283,7 +283,7 @@ class BranchingService {
    * 复制分支数据（实现Transient隔离）
    */
   private async copyBranchData(fromBranchId: string, toBranchId: string): Promise<void> {
-    const sourceKeys = tsa.keys().filter(key => 
+    const sourceKeys = Array.from(tsa.keys()).filter((key: string) => 
       key.includes(`branch:${fromBranchId}:`) || 
       key.includes(`transient:${fromBranchId}:`)
     );
@@ -311,7 +311,7 @@ class BranchingService {
     };
 
     // 模拟投票结果（直接通过用于测试）
-    const allRoles: AgentRole[] = ['pm', 'architect', 'qa', 'engineer', 'audit', 'orchestrator'];
+    const allRoles: AgentRole[] = ['pm', 'arch', 'qa', 'engineer', 'mike', 'system'];
     let approvalCount = 0;
 
     for (const role of allRoles) {
@@ -331,7 +331,7 @@ class BranchingService {
    */
   private async executeMerge(source: Branch, target: Branch): Promise<void> {
     // 合并Transient数据
-    const sourceKeys = tsa.keys().filter(key => 
+    const sourceKeys = Array.from(tsa.keys()).filter((key: string) => 
       key.includes(`branch:${source.id}:`) ||
       key.includes(`transient:${source.id}:`)
     );

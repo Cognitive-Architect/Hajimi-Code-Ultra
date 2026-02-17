@@ -260,7 +260,7 @@ class RemixService {
         id: 'DEC-001',
         content: '采用YGGDRASIL四象限架构进行上下文管理',
         timestamp: Date.now(),
-        agent: 'architect',
+        agent: 'arch',
         impact: 'high',
       });
     }

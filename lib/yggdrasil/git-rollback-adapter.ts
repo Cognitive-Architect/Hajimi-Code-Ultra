@@ -194,9 +194,9 @@ class GitRollbackAdapter {
       await tsa.set('yggdrasil:git:current_commit', commitId, { tier: 'ARCHIVE' });
       
       // 清除可能冲突的Staging数据
-      const keys = tsa.keys().filter(k => k.startsWith('session:'));
+      const keys = Array.from(tsa.keys()).filter((k: string) => k.startsWith('session:'));
       for (const key of keys) {
-        await tsa.delete(key);
+        await tsa.remove(key);
       }
 
       return true;

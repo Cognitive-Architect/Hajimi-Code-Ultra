@@ -6,3 +6,11 @@ dist/
 coverage/
 .DS_Store
 *.zip
+
+# 测试产出物（ID-62 组件包分离）
+coverage-report.json
+test-result.json
+*.tsbuildinfo
+coverage/
+.nyc_output/
+
