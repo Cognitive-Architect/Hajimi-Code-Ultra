@@ -4,7 +4,7 @@
   <a href="#architecture">
     <img src="https://img.shields.io/badge/七权-Ouroboros%20🐍♾️-purple?style=for-the-badge" alt="Ouroboros">
   </a>
-  <img src="https://img.shields.io/badge/version-v1.5.0--lcr--alpha-blue?style=for-the-badge&logo=github" alt="Version">
+  <img src="https://img.shields.io/badge/version-v1.5.0--final-blue?style=for-the-badge&logo=github" alt="Version">
   <img src="https://img.shields.io/badge/runtime-本地上下文-green?style=for-the-badge&logo=server" alt="Runtime">
   <img src="https://img.shields.io/badge/maintained-Cognitive%20Architect-orange?style=for-the-badge&logo=user" alt="Maintainer">
 </p>
@@ -22,10 +22,10 @@
 
 | 属性 | 值 |
 |:---|:---|
-| **完整版本号** | v1.5.0-lcr-alpha |
-| **代号** | LCR (Local Context Runtime) |
-| **阶段** | Alpha 预发布 |
-| **发布日期** | 2026-02 |
+| **完整版本号** | v1.5.0-final |
+| **代号** | Lazy-RAG |
+| **阶段** | **Production Ready** |
+| **发布日期** | 2026-02-17 |
 
 ---
 
@@ -213,19 +213,18 @@ flowchart TB
 | 组件 | 版本 | 验证命令 | 状态 |
 |:---|:---|:---|:---:|
 | TYPE-FIX-001 | v1.0 | `npx tsc --noEmit` | ✅ |
-| ALICE-ML | v1.4 | `npm test alice` | ✅ |
-| ALICE-UI | v1.4 | `npm run build` | ✅ |
+| ALICE-ML | v1.5 | `npm test alice` | ✅ |
+| ALICE-UI | v1.5 | `npm run build` | ✅ |
+| **Lazy-RAG MVP** | **v1.0** | `npm run benchmark:lazy-rag` | ✅ |
 | LCR-Luxury | v1.5 | `npm test lcr` | ✅ |
 
 #### 待施工组件
 
 | 组件 | 状态 | 债务 | 计划 |
 |:---|:---|:---|:---:|
-| B-01 Context Snapper | 设计冻结代码 0% | DEBT-LCR-001 | v1.5.1 |
-| B-02 Workspace v2.0 | 设计冻结代码 0% | DEBT-LCR-002 | v1.5.1 |
-| B-03 Tiered Memory | 设计冻结代码 0% | DEBT-LCR-003 | v1.5.2 |
-| B-04 Hybrid RAG | 设计冻结代码 0% | DEBT-LCR-004 | v1.5.2 |
-| B-05 Predictive GC | 设计冻结代码 0% | DEBT-LCR-005 | v1.5.3 |
+| B-06 RAG增量索引 | 计划中 | DEBT-LCR-006 | v1.5.1 |
+| B-07 本地Embedding | 计划中 | DEBT-LCR-007 | v1.5.2 |
+| B-08 分布式RAG | 计划中 | DEBT-LCR-008 | v1.6.0 |
 
 ### 3.4 快速开始
 
@@ -237,10 +236,13 @@ git clone https://github.com/Cognitive-Architect/Hajimi-Code-Ultra.git
 cd Hajimi-Code-Ultra
 
 # Step 3: 切换至目标分支
-git checkout v1.5.0-lcr-alpha-typefix
+git checkout v1.5.0-final
 
 # Step 4: 安装依赖并验证类型
 npm install && npx tsc --noEmit
+
+# Step 5: 启动Lazy-RAG Server
+npm run start:lazy-rag
 ```
 
 ### 3.5 监控指标

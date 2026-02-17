@@ -15,7 +15,9 @@
     "test:coverage": "jest --coverage",
     "test:redis": "node scripts/test-runner.js",
     "test:ci": "node scripts/test-runner.js --ci",
-    "self-test": "node scripts/self-test.js"
+    "self-test": "node scripts/self-test.js",
+    "start:lazy-rag": "cd server/lazy-rag && npm install && npm start",
+    "benchmark:lazy-rag": "npx ts-node tests/lazy-rag-benchmark.ts"
   },
   "dependencies": {
     "@xenova/transformers": "^2.17.2",

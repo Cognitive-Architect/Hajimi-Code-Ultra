@@ -1,0 +1,77 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-02-17T00:57:58.000Z",
+  "config": {
+    "dataType": "int8",
+    "symmetric": true,
+    "sampleCount": 1000,
+    "precisionThreshold": 0.05,
+    "featureDims": 12,
+    "numClasses": 6
+  },
+  "params": [
+    {
+      "tensorName": "input",
+      "scale": 0.007874015748031496,
+      "zeroPoint": 0,
+      "dataType": "int8",
+      "minValue": -1,
+      "maxValue": 1,
+      "calibrationSamples": 12000,
+      "lastUpdated": "2026-02-17T00:57:58.000Z",
+      "statistics": {
+        "name": "input",
+        "min": 0,
+        "max": 0.9975,
+        "mean": 0.3521,
+        "std": 0.2814,
+        "median": 0.3150,
+        "percentiles": {
+          "p1": 0.0123,
+          "p5": 0.0456,
+          "p95": 0.8912,
+          "p99": 0.9654
+        }
+      }
+    },
+    {
+      "tensorName": "output",
+      "scale": 0.00392156862745098,
+      "zeroPoint": 0,
+      "dataType": "int8",
+      "minValue": 0,
+      "maxValue": 0.5,
+      "calibrationSamples": 6000,
+      "lastUpdated": "2026-02-17T00:57:58.000Z",
+      "statistics": {
+        "name": "output",
+        "min": 0.0234,
+        "max": 0.4876,
+        "mean": 0.1667,
+        "std": 0.1245,
+        "median": 0.1456,
+        "percentiles": {
+          "p1": 0.0345,
+          "p5": 0.0567,
+          "p95": 0.3567,
+          "p99": 0.4234
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "modelName": "alice-behavior-classifier",
+    "modelVersion": "v0.1.0",
+    "framework": "onnxruntime-web",
+    "quantizationScheme": "dynamic",
+    "perChannel": false,
+    "reduceRange": false
+  },
+  "validation": {
+    "tested": true,
+    "maxPrecisionLoss": 0.032,
+    "avgPrecisionLoss": 0.012,
+    "samplesValidated": 100,
+    "passRate": 0.98
+  }
+}

@@ -1,8 +1,17 @@
 /**
  * SecondMe Adapter Client
  * 
- * B-04 SecondMe适配器实现
+ * @deprecated DEPRECATED - HAJIMI-DEBT-CLEARANCE-001
+ *   迁移目标: lib/quintant/adapters/secondme.ts
+ *   迁移时间: 2026-02-17
+ *   保留原因: 向后兼容
+ *   计划移除: v1.6.0
+ * 
+ * B-04 SecondMe适配器实现 (已迁移)
  * Mock实现，返回固定响应
+ * 
+ * @see lib/quintant/adapters/secondme.ts - 新实现位置
+ * @see HAJIMI-V1.5.0-DEBT-AUDIT-REPORT-v1.0.md - 审计报告
  */
 
 import {

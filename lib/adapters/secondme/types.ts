@@ -1,9 +1,17 @@
 /**
  * SecondMe Adapter Type Definitions
  * 
+ * @deprecated DEPRECATED - HAJIMI-DEBT-CLEARANCE-001
+ *   迁移目标: lib/quintant/types.ts (类型已内聚)
+ *   迁移时间: 2026-02-17
+ *   保留原因: 向后兼容
+ *   计划移除: v1.6.0
+ * 
  * 迁移来源: src/lib/secondme/types.ts
- * 迁移方式: 完全保留
- * 代码行数: ~150行
+ * 迁移方式: 完全保留 (B-04阶段)
+ * 
+ * @see lib/quintant/types.ts - 新类型定义位置
+ * @see HAJIMI-V1.5.0-DEBT-AUDIT-REPORT-v1.0.md - 审计报告
  */
 
 // ============================================================================
