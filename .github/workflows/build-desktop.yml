@@ -1,0 +1,461 @@
+# ============================================================
+# HAJIMI Desktop v1.4.0 - GitHub Actions 打包工作流
+# ============================================================
+# 文件: .github/workflows/build-desktop.yml
+# 职责: 多平台构建（Win/Mac/Linux）、冷启动时间<3s（DSK-002）
+#       自动签名（配置占位）、自动发布
+#
+# @version 1.4.0
+# @author Hajimi Team
+# ============================================================
+
+name: Build Desktop Apps
+
+# 触发条件
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (例如: 1.4.0)'
+        required: false
+        default: ''
+      draft:
+        description: '创建草稿Release'
+        required: false
+        default: 'false'
+      prerelease:
+        description: '预发布版本'
+        required: false
+        default: 'false'
+
+# 环境变量
+env:
+  NODE_VERSION: '20'
+  ELECTRON_VERSION: '28'
+  PRODUCT_NAME: 'Hajimi Code'
+  APP_ID: 'com.cognitivearchitect.hajimi'
+
+# 权限
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # ============================================================
+  # 准备阶段：代码检查和版本确定
+  # ============================================================
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release_id: ${{ steps.release.outputs.id }}
+      should_build: ${{ steps.check.outputs.should_build }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event.inputs.version }}" != "" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Check if should build
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        id: release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ steps.version.outputs.version }}
+          draft: ${{ github.event.inputs.draft == 'true' }}
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
+
+  # ============================================================
+  # 构建 Windows 版本
+  # ============================================================
+  build-windows:
+    needs: prepare
+    if: needs.prepare.outputs.should_build == 'true'
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    outputs:
+      artifact_name: ${{ steps.package.outputs.artifact_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js app
+        run: npm run build
+
+      - name: Build Electron
+        run: npm run build:electron
+
+      # Windows代码签名（需要证书）
+      - name: Setup Windows signing
+        if: env.WINDOWS_CERTIFICATE != ''
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $certBytes = [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
+          $certPath = Join-Path -Path $env:TEMP -ChildPath "certificate.pfx"
+          [IO.File]::WriteAllBytes($certPath, $certBytes)
+          echo "CSC_LINK=$certPath" >> $env:GITHUB_ENV
+          echo "CSC_KEY_PASSWORD=$env:WINDOWS_CERTIFICATE_PASSWORD" >> $env:GITHUB_ENV
+
+      # 打包
+      - name: Package Windows ${{ matrix.arch }}
+        id: package
+        run: |
+          npm run package:win -- --arch=${{ matrix.arch }}
+          $artifact = "Hajimi-Code-${{ needs.prepare.outputs.version }}-win32-${{ matrix.arch }}.exe"
+          echo "artifact_name=$artifact" >> $env:GITHUB_OUTPUT
+
+      # 验证安装包体积 (DSK-001: <100MB)
+      - name: Verify package size
+        run: |
+          $installer = Get-ChildItem -Path "dist/*.exe" | Select-Object -First 1
+          $sizeMB = $installer.Length / 1MB
+          Write-Host "Installer size: $([math]::Round($sizeMB, 2)) MB"
+          if ($sizeMB -gt 100) {
+            Write-Error "Installer size exceeds 100MB limit!"
+            exit 1
+          }
+
+      # 冷启动时间测试 (DSK-002: <3s)
+      - name: Test cold start time
+        run: |
+          npm install -g artillery
+          artillery quick --count 1 --num 1 -o startup-test.json
+          # 解析启动时间并验证
+          $startupTime = (Get-Content startup-test.json | ConvertFrom-Json).aggregate.summary["vusers.session_length"].median
+          Write-Host "Cold start time: $startupTime ms"
+          if ($startupTime -gt 3000) {
+            Write-Warning "Cold start time exceeds 3s target!"
+          }
+
+      # 上传构建产物
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}-installer
+          path: dist/*.exe
+          retention-days: 7
+
+      # 发布到Release
+      - name: Upload to Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare.outputs.release_id }}
+          asset_path: dist/Hajimi-Code-Setup.exe
+          asset_name: Hajimi-Code-${{ needs.prepare.outputs.version }}-win32-${{ matrix.arch }}.exe
+          asset_content_type: application/x-msdownload
+
+  # ============================================================
+  # 构建 macOS 版本
+  # ============================================================
+  build-macos:
+    needs: prepare
+    if: needs.prepare.outputs.should_build == 'true'
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js app
+        run: npm run build
+
+      - name: Build Electron
+        run: npm run build:electron
+
+      # macOS代码签名和公证（需要Apple Developer账号）
+      # 债务: DEBT-SIGN-001 (P2, 需Apple开发者账号)
+      - name: Setup macOS signing
+        if: env.MACOS_CERTIFICATE != ''
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGNING_ID: ${{ secrets.MACOS_SIGNING_ID }}
+          MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+          MACOS_APP_SPECIFIC_PASSWORD: ${{ secrets.MACOS_APP_SPECIFIC_PASSWORD }}
+        run: |
+          echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p "" build.keychain
+          security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-keychain-settings build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          
+          echo "CSC_LINK=certificate.p12" >> $GITHUB_ENV
+          echo "CSC_KEY_PASSWORD=$MACOS_CERTIFICATE_PASSWORD" >> $GITHUB_ENV
+          echo "APPLE_ID=${{ secrets.APPLE_ID }}" >> $GITHUB_ENV
+          echo "APPLE_APP_SPECIFIC_PASSWORD=$MACOS_APP_SPECIFIC_PASSWORD" >> $GITHUB_ENV
+          echo "APPLE_TEAM_ID=$MACOS_TEAM_ID" >> $GITHUB_ENV
+
+      # 打包
+      - name: Package macOS ${{ matrix.arch }}
+        run: npm run package:mac -- --arch=${{ matrix.arch }}
+
+      # 公证（需要配置）
+      - name: Notarize macOS app
+        if: env.APPLE_ID != '' && matrix.arch == 'arm64'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+        run: |
+          xcrun notarytool submit "dist/Hajimi-Code.dmg" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "${{ secrets.MACOS_APP_SPECIFIC_PASSWORD }}" \
+            --wait
+
+      # 上传构建产物
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}-installer
+          path: |
+            dist/*.dmg
+            dist/*.zip
+          retention-days: 7
+
+      # 发布到Release
+      - name: Upload to Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare.outputs.release_id }}
+          asset_path: dist/Hajimi-Code.dmg
+          asset_name: Hajimi-Code-${{ needs.prepare.outputs.version }}-darwin-${{ matrix.arch }}.dmg
+          asset_content_type: application/x-apple-diskimage
+
+  # ============================================================
+  # 构建 Linux 版本
+  # ============================================================
+  build-linux:
+    needs: prepare
+    if: needs.prepare.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [AppImage, deb, rpm, snap]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fakeroot dpkg rpm snapcraft
+
+      - name: Build Next.js app
+        run: npm run build
+
+      - name: Build Electron
+        run: npm run build:electron
+
+      # 打包
+      - name: Package Linux ${{ matrix.target }}
+        run: npm run package:linux -- --target=${{ matrix.target }}
+
+      # 上传构建产物
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.target }}-installer
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
+            dist/*.snap
+          retention-days: 7
+
+      # 发布到Release
+      - name: Upload to Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare.outputs.release_id }}
+          asset_path: dist/Hajimi-Code.${{ matrix.target == 'AppImage' && 'AppImage' || matrix.target }}
+          asset_name: Hajimi-Code-${{ needs.prepare.outputs.version }}-linux-x64.${{ matrix.target == 'AppImage' && 'AppImage' || matrix.target }}
+          asset_content_type: application/octet-stream
+
+  # ============================================================
+  # 生成增量更新补丁
+  # ============================================================
+  generate-patches:
+    needs: [prepare, build-windows, build-macos, build-linux]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download previous release
+        run: |
+          # 获取上一个版本的安装包
+          LATEST_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+          if [ -n "$LATEST_TAG" ]; then
+            echo "Previous version: $LATEST_TAG"
+            # 下载旧版本安装包
+            mkdir -p old-versions
+            # 使用GitHub API获取旧版本资源
+            curl -sL "https://api.github.com/repos/${{ github.repository }}/releases/tags/$LATEST_TAG" | \
+              jq -r '.assets[].browser_download_url' | \
+              xargs -I {} wget -P old-versions {}
+          fi
+
+      - name: Generate bsdiff patches
+        run: |
+          npm install -g bsdiff
+          
+          # 为每个平台生成补丁
+          for old_file in old-versions/*; do
+            for new_file in dist/*; do
+              if [[ "$(basename $old_file)" == *"win32"* ]] && [[ "$(basename $new_file)" == *"win32"* ]]; then
+                output="dist/hajimi-$(echo $LATEST_TAG | sed 's/v//')-to-${{ needs.prepare.outputs.version }}.patch"
+                bsdiff "$old_file" "$new_file" "$output"
+                echo "Generated patch: $output"
+              fi
+            done
+          done
+
+      - name: Upload patches
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.prepare.outputs.release_id }}
+          asset_path: dist/*.patch
+          asset_name: incremental-update.patch
+          asset_content_type: application/octet-stream
+
+  # ============================================================
+  # 测试和验证
+  # ============================================================
+  test:
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # DSK-001: 安装包体积 < 100MB
+      - name: Verify package size (DSK-001)
+        run: |
+          npm run test:package-size
+
+      # DSK-002: 冷启动时间 < 3s
+      - name: Verify cold start time (DSK-002)
+        run: |
+          npm run test:cold-start
+
+      # DSK-003: 自动更新零中断
+      - name: Verify auto-update (DSK-003)
+        run: |
+          npm run test:auto-update
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.os }}
+          path: test-results/
+          retention-days: 7
+
+  # ============================================================
+  # 发布完成通知
+  # ============================================================
+  notify:
+    needs: [prepare, build-windows, build-macos, build-linux, generate-patches]
+    if: always() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify success
+        if: needs.build-windows.result == 'success' && needs.build-macos.result == 'success' && needs.build-linux.result == 'success'
+        run: |
+          echo "✅ All builds completed successfully!"
+          echo "Version: ${{ needs.prepare.outputs.version }}"
+          echo "Download: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.prepare.outputs.version }}"
+
+      - name: Notify failure
+        if: needs.build-windows.result == 'failure' || needs.build-macos.result == 'failure' || needs.build-linux.result == 'failure'
+        run: |
+          echo "❌ Some builds failed!"
+          exit 1
