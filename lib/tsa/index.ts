@@ -23,3 +23,14 @@ export * from './state-machine';
 export * from './middleware';
 export { useTSA, useAgentLifecycle } from './hooks/useTSA';
 export { default } from './state-machine';
+
+// DEBT-007 FIX: 导出TSA状态持久化
+export {
+  TSAState,
+  TSAStatePersistence,
+  IndexedDBStateStorage,
+  RedisStateStorage,
+  tsaStatePersistence,
+  type PersistedState,
+  type StateStorageAdapter,
+} from './state-persistence';

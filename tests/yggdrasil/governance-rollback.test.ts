@@ -8,7 +8,7 @@ import { GovernanceRollbackService } from '@/lib/yggdrasil/governance-rollback-s
 const mockVoteService = {
   init: jest.fn().mockResolvedValue(undefined),
   createProposal: jest.fn(),
-  getResults: jest.fn(),
+  getVoteStats: jest.fn(),
 };
 
 jest.mock('@/lib/tsa', () => ({
@@ -67,7 +67,7 @@ describe('GovernanceRollbackService', () => {
     it('通过阈值后执行回滚', async () => {
       const { tsa } = require('@/lib/tsa');
       
-      mockVoteService.getResults.mockResolvedValue({
+      mockVoteService.getVoteStats.mockResolvedValue({
         hasApprovalThreshold: true,
         approvalRate: 0.75,
         totalVotes: 6,
@@ -90,7 +90,7 @@ describe('GovernanceRollbackService', () => {
     it('未通过阈值时不执行', async () => {
       const { tsa } = require('@/lib/tsa');
       
-      mockVoteService.getResults.mockResolvedValue({
+      mockVoteService.getVoteStats.mockResolvedValue({
         hasApprovalThreshold: false,
         approvalRate: 0.4,
         totalVotes: 6,

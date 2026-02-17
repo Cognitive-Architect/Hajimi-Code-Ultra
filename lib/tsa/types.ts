@@ -165,10 +165,12 @@ export namespace tsa {
   
   /**
    * 销毁TSA存储实例
-   * 清理所有资源并重置状态
+   * 重置状态但不清理持久化数据（模拟真实存储行为）
+   * DEBT-007 FIX: destroy 不应清除已持久化的数据
    */
   export function destroy(): void {
-    storage.clear();
+    // FIX: 不清除 storage，数据应该持久化保留
+    // storage.clear(); // 已移除 - 持久化数据不应在 destroy 时被清除
     initialized = false;
     monitorInstance = null;
   }

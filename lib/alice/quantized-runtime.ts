@@ -70,6 +70,10 @@ export interface QuantizationConfig {
   paramsPath: string;
   /** 性能采样率 (0-1) */
   performanceSamplingRate: number;
+  /** 初始化超时 (ms) - DEBT-003 修复 */
+  initTimeoutMs?: number;
+  /** 推理超时 (ms) - DEBT-003 修复 */
+  inferenceTimeoutMs?: number;
 }
 
 /**
@@ -345,6 +349,8 @@ export class QuantizedOnnxRuntime {
       calibrationDataPath: config.calibrationDataPath,
       paramsPath: config.paramsPath ?? './quantization-params.json',
       performanceSamplingRate: config.performanceSamplingRate ?? 0.1,
+      initTimeoutMs: config.initTimeoutMs ?? 3000, // DEBT-003: 初始化超时3000ms
+      inferenceTimeoutMs: config.inferenceTimeoutMs ?? 5000, // DEBT-003: 推理超时5000ms
     };
 
     this.metrics = {

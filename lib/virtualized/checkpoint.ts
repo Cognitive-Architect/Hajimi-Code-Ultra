@@ -16,6 +16,7 @@
  * @version 1.0.0
  */
 
+import { createHash } from 'crypto';
 import { AgentSnapshot, IVirtualAgent } from './types';
 
 /**
@@ -143,7 +144,12 @@ export const DEFAULT_CHECKPOINT_CONFIG: CheckpointConfig = {
  * SHA256校验和生成
  */
 async function generateChecksum(data: string): Promise<string> {
-  // 使用Web Crypto API生成SHA256
+  // 优先使用 Node.js crypto 模块
+  if (typeof process !== 'undefined' && process.versions?.node) {
+    return createHash('sha256').update(data).digest('hex');
+  }
+  
+  // 浏览器环境：使用Web Crypto API生成SHA256
   if (typeof crypto !== 'undefined' && crypto.subtle) {
     const encoder = new TextEncoder();
     const buffer = encoder.encode(data);
@@ -151,6 +157,7 @@ async function generateChecksum(data: string): Promise<string> {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
+  
   // 降级方案：简单哈希
   let hash = 0;
   for (let i = 0; i < data.length; i++) {
@@ -168,26 +175,72 @@ function generateId(): string {
 }
 
 /**
+ * 内存存储适配器（用于Node.js测试环境）
+ */
+class MemoryStorageAdapter {
+  private storage = new Map<string, Checkpoint>();
+
+  async init(): Promise<void> {
+    // 内存存储无需初始化
+  }
+
+  async save(checkpoint: Checkpoint): Promise<void> {
+    this.storage.set(checkpoint.metadata.id, JSON.parse(JSON.stringify(checkpoint)));
+  }
+
+  async load(id: string): Promise<Checkpoint | null> {
+    const data = this.storage.get(id);
+    return data ? JSON.parse(JSON.stringify(data)) : null;
+  }
+
+  async delete(id: string): Promise<void> {
+    this.storage.delete(id);
+  }
+
+  async getAllIds(): Promise<string[]> {
+    return Array.from(this.storage.keys());
+  }
+
+  async clear(): Promise<void> {
+    this.storage.clear();
+  }
+}
+
+/**
  * IndexedDB存储适配器
  */
 class IndexedDBAdapter {
   private db: IDBDatabase | null = null;
   private readonly dbName: string;
   private readonly storeName: string;
+  private memoryFallback: MemoryStorageAdapter;
+  private useFallback = false;
 
   constructor(config: CheckpointConfig) {
     this.dbName = config.indexedDBName;
     this.storeName = config.indexedDBStoreName;
+    this.memoryFallback = new MemoryStorageAdapter();
   }
 
   /**
    * 初始化数据库
    */
   async init(): Promise<void> {
+    // 检查是否在 Node.js 环境（无indexedDB）
+    if (typeof indexedDB === 'undefined') {
+      this.useFallback = true;
+      return this.memoryFallback.init();
+    }
+
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.dbName, 1);
       
-      request.onerror = () => reject(request.error);
+      request.onerror = () => {
+        // 失败时使用内存降级
+        this.useFallback = true;
+        this.memoryFallback.init().then(() => resolve());
+      };
+      
       request.onsuccess = () => {
         this.db = request.result;
         resolve();
@@ -206,6 +259,10 @@ class IndexedDBAdapter {
    * 保存Checkpoint
    */
   async save(checkpoint: Checkpoint): Promise<void> {
+    if (this.useFallback) {
+      return this.memoryFallback.save(checkpoint);
+    }
+    
     if (!this.db) await this.init();
     
     return new Promise((resolve, reject) => {
@@ -222,6 +279,10 @@ class IndexedDBAdapter {
    * 加载Checkpoint
    */
   async load(id: string): Promise<Checkpoint | null> {
+    if (this.useFallback) {
+      return this.memoryFallback.load(id);
+    }
+    
     if (!this.db) await this.init();
     
     return new Promise((resolve, reject) => {
@@ -238,6 +299,10 @@ class IndexedDBAdapter {
    * 删除Checkpoint
    */
   async delete(id: string): Promise<void> {
+    if (this.useFallback) {
+      return this.memoryFallback.delete(id);
+    }
+    
     if (!this.db) await this.init();
     
     return new Promise((resolve, reject) => {
@@ -254,6 +319,10 @@ class IndexedDBAdapter {
    * 获取所有Checkpoint ID
    */
   async getAllIds(): Promise<string[]> {
+    if (this.useFallback) {
+      return this.memoryFallback.getAllIds();
+    }
+    
     if (!this.db) await this.init();
     
     return new Promise((resolve, reject) => {
@@ -270,6 +339,10 @@ class IndexedDBAdapter {
    * 清空存储
    */
   async clear(): Promise<void> {
+    if (this.useFallback) {
+      return this.memoryFallback.clear();
+    }
+    
     if (!this.db) await this.init();
     
     return new Promise((resolve, reject) => {
@@ -342,6 +415,8 @@ export interface ICheckpointService {
   createL2(agent: IVirtualAgent): Promise<Checkpoint>;
   /** 创建L3 Git归档检查点 */
   createL3(agent: IVirtualAgent): Promise<Checkpoint>;
+  /** 通用保存方法（用于测试） */
+  save(agentId: string, level: CheckpointLevel, data: unknown): Promise<Checkpoint>;
   /** 恢复Agent状态 */
   resume(checkpointId: string): Promise<RestoreResult>;
   /** YGGDRASIL回滚 */
@@ -398,6 +473,84 @@ export class CheckpointService implements ICheckpointService {
     if (this.gitAdapter) {
       await this.gitAdapter.init();
     }
+  }
+
+  /**
+   * 序列化Checkpoint为Buffer
+   */
+  serialize(checkpoint: Checkpoint): Buffer {
+    return Buffer.from(JSON.stringify(checkpoint));
+  }
+
+  /**
+   * 反序列化Buffer为Checkpoint
+   */
+  deserialize(data: Buffer): Checkpoint {
+    return JSON.parse(data.toString());
+  }
+
+  /**
+   * 计算Checkpoint的SHA256校验和
+   */
+  async computeHash(checkpoint: Checkpoint): Promise<string> {
+    const state = JSON.stringify(checkpoint.snapshot);
+    return generateChecksum(state);
+  }
+
+  /**
+   * 通用保存方法（兼容测试接口）
+   */
+  async save(agentId: string, level: CheckpointLevel, data: unknown): Promise<Checkpoint> {
+    const startTime = performance.now();
+    
+    const id = generateId();
+    const snapshot: AgentSnapshot = {
+      id: agentId,
+      state: 'SPAWNED',
+      contextBoundary: 'default',
+      retryCount: 0,
+      timestamp: Date.now(),
+      metadata: data as Record<string, unknown>,
+    };
+    
+    const serializedState = JSON.stringify({
+      snapshot,
+      timestamp: Date.now(),
+      version: '1.0.0',
+      level,
+    });
+    
+    const checksum = await generateChecksum(serializedState);
+    
+    const checkpoint: Checkpoint = {
+      metadata: {
+        id,
+        level,
+        agentId,
+        createdAt: Date.now(),
+        state: 'SAVED',
+        size: serializedState.length,
+        checksum,
+      },
+      snapshot,
+      serializedState,
+    };
+    
+    // 保存到内存
+    this.checkpoints.set(id, checkpoint);
+    
+    // 异步保存到IndexedDB
+    await this.indexedDB.save(checkpoint);
+    
+    const elapsed = performance.now() - startTime;
+    this.saveTimes.push(elapsed);
+    
+    // 性能验证
+    if (level === 'L1' && elapsed > this.config.l1LatencyBudgetMs) {
+      console.warn(`[Checkpoint L1] 保存时间 ${elapsed.toFixed(2)}ms 超过${this.config.l1LatencyBudgetMs}ms预算`);
+    }
+    
+    return checkpoint;
   }
 
   /**

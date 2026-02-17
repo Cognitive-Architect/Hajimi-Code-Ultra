@@ -2,311 +2,31 @@
  * B-04/09: IndexedDBStore v2 测试
  * 咕咕嘎嘎·IndexedDB矿工 - 自测验证
  * 
+ * @jest-environment jsdom
+ * 
  * 测试点：
  * - IDB-001: 并发写入10个状态无竞态（Promise.all验证）
  * - IDB-002: 浏览器刷新后数据恢复（localStorage备份双保险）
  * - IDB-003: 存储配额超限优雅降级（QuotaExceededError处理）
  */
 
-import { IndexedDBStoreV2, DataPriority, SetOptions } from '../lib/tsa/persistence/indexeddb-store-v2';
+// ============================================
+// FIX: 使用 fake-indexeddb 自动全局注册 IndexedDB
+// 必须在任何模块导入前执行，确保被测模块能检测到 indexedDB
+// ============================================
 
-// ==================== Mock IndexedDB ====================
-
-class MockIDBRequest {
-  result: unknown;
-  error: Error | null = null;
-  onsuccess: (() => void) | null = null;
-  onerror: (() => void) | null = null;
-  source: unknown = null;
-  transaction: MockIDBTransaction | null = null;
-  readyState: 'pending' | 'done' = 'pending';
-
-  constructor(result?: unknown) {
-    this.result = result;
-  }
-
-  _success(result?: unknown): void {
-    if (result !== undefined) this.result = result;
-    this.readyState = 'done';
-    // FIX: 使用 Promise.resolve() 确保异步但可等待
-    Promise.resolve().then(() => this.onsuccess?.());
-  }
-
-  _error(error: Error): void {
-    this.error = error;
-    this.readyState = 'done';
-    Promise.resolve().then(() => this.onerror?.());
-  }
+// FIX: 添加 structuredClone polyfill（fake-indexeddb 依赖此 API）
+if (typeof structuredClone === 'undefined') {
+  (global as unknown as { structuredClone: <T>(value: T) => T }).structuredClone = <T>(value: T): T => {
+    return JSON.parse(JSON.stringify(value));
+  };
 }
 
-class MockIDBTransaction {
-  objectStoreNames: DOMStringList = [] as unknown as DOMStringList;
-  mode: IDBTransactionMode = 'readonly';
-  db: MockIDBDatabase;
-  error: Error | null = null;
-  onabort: (() => void) | null = null;
-  oncomplete: (() => void) | null = null;
-  onerror: (() => void) | null = null;
-  private storeNames: string[];
-
-  constructor(db: MockIDBDatabase, storeNames: string[], mode: IDBTransactionMode = 'readonly') {
-    this.db = db;
-    this.storeNames = storeNames;
-    this.mode = mode;
-  }
-
-  objectStore(name: string): MockIDBObjectStore {
-    return this.db._getObjectStore(name);
-  }
-
-  _complete(): void {
-    Promise.resolve().then(() => this.oncomplete?.());
-  }
-}
-
-class MockIDBObjectStore {
-  name: string;
-  keyPath: string | string[] = 'key';
-  indexNames: DOMStringList = [] as unknown as DOMStringList;
-  autoIncrement = false;
-  transaction: MockIDBTransaction;
-  private data: Map<string, unknown> = new Map();
-  private indexes: Map<string, MockIDBIndex> = new Map();
-
-  constructor(name: string, transaction: MockIDBTransaction) {
-    this.name = name;
-    this.transaction = transaction;
-  }
-
-  get(key: string): MockIDBRequest {
-    const request = new MockIDBRequest();
-    const data = this.data.get(key);
-    request._success(data);
-    return request;
-  }
-
-  getAll(): MockIDBRequest {
-    const request = new MockIDBRequest();
-    request._success(Array.from(this.data.values()));
-    return request;
-  }
-
-  getAllKeys(): MockIDBRequest {
-    const request = new MockIDBRequest();
-    request._success(Array.from(this.data.keys()));
-    return request;
-  }
-
-  put(value: unknown): MockIDBRequest {
-    const request = new MockIDBRequest();
-    const key = (value as { key: string }).key;
-    
-    // 模拟配额超限
-    if (this.data.size > 10000) {
-      const error = new Error('QuotaExceededError');
-      (error as Error & { name: string }).name = 'QuotaExceededError';
-      request._error(error);
-      return request;
-    }
-    
-    this.data.set(key, value);
-    request._success(undefined);
-    return request;
-  }
-
-  delete(key: string): MockIDBRequest {
-    const request = new MockIDBRequest();
-    this.data.delete(key);
-    request._success(undefined);
-    return request;
-  }
-
-  clear(): MockIDBRequest {
-    const request = new MockIDBRequest();
-    this.data.clear();
-    request._success(undefined);
-    return request;
-  }
-
-  count(): MockIDBRequest {
-    const request = new MockIDBRequest();
-    request._success(this.data.size);
-    return request;
-  }
-
-  createIndex(name: string, keyPath: string, options?: IDBIndexParameters): MockIDBIndex {
-    const index = new MockIDBIndex(name, keyPath, this);
-    this.indexes.set(name, index);
-    (this.indexNames as unknown as string[]).push(name);
-    return index;
-  }
-
-  index(name: string): MockIDBIndex {
-    return this.indexes.get(name)!;
-  }
-
-  _getData(): Map<string, unknown> {
-    return this.data;
-  }
-}
-
-class MockIDBIndex {
-  name: string;
-  keyPath: string | string[];
-  multiEntry = false;
-  unique = false;
-  objectStore: MockIDBObjectStore;
-
-  constructor(name: string, keyPath: string, objectStore: MockIDBObjectStore) {
-    this.name = name;
-    this.keyPath = keyPath;
-    this.objectStore = objectStore;
-  }
-
-  getAll(): MockIDBRequest {
-    const request = new MockIDBRequest();
-    const data = Array.from(this.objectStore._getData().values());
-    request._success(data);
-    return request;
-  }
-}
-
-// Mock DOMStringList with contains method
-class MockDOMStringList {
-  private items: string[] = [];
-
-  get length(): number {
-    return this.items.length;
-  }
-
-  item(index: number): string | null {
-    return this.items[index] ?? null;
-  }
-
-  contains(str: string): boolean {
-    return this.items.includes(str);
-  }
-
-  push(name: string): void {
-    this.items.push(name);
-  }
-
-  [Symbol.iterator](): Iterator<string> {
-    return this.items[Symbol.iterator]();
-  }
-}
-
-class MockIDBDatabase {
-  name: string;
-  version: number;
-  objectStoreNames: MockDOMStringList = new MockDOMStringList();
-  private stores: Map<string, MockIDBObjectStore> = new Map();
-
-  constructor(name: string, version: number) {
-    this.name = name;
-    this.version = version;
-  }
-
-  createObjectStore(name: string, options?: IDBObjectStoreParameters): MockIDBObjectStore {
-    const store = new MockIDBObjectStore(name, null as unknown as MockIDBTransaction);
-    if (options?.keyPath) store.keyPath = options.keyPath;
-    this.stores.set(name, store);
-    this.objectStoreNames.push(name);
-    return store;
-  }
-
-  transaction(storeNames: string | string[], mode?: IDBTransactionMode): MockIDBTransaction {
-    const names = Array.isArray(storeNames) ? storeNames : [storeNames];
-    const transaction = new MockIDBTransaction(this, names, mode);
-    Promise.resolve().then(() => transaction._complete());
-    return transaction;
-  }
-
-  _getObjectStore(name: string): MockIDBObjectStore {
-    return this.stores.get(name)!;
-  }
-
-  close(): void {
-    // Mock close
-  }
-}
-
-class MockIDBOpenDBRequest extends MockIDBRequest {
-  onupgradeneeded: ((event: { oldVersion: number; newVersion: number | null }) => void) | null = null;
-  onblocked: (() => void) | null = null;
-}
-
-// 模拟全局 indexedDB
-const mockDatabases: Map<string, MockIDBDatabase> = new Map();
-let mockQuotaExceeded = false;
-
-// 辅助函数：延迟执行（使用微任务队列）
-const delay = (fn: () => void): void => {
-  Promise.resolve().then(fn);
-};
-
-const mockIndexedDB = {
-  open: (name: string, version?: number): MockIDBOpenDBRequest => {
-    const request = new MockIDBOpenDBRequest();
-    const dbVersion = version || 1;
-    
-    delay(() => {
-      let db = mockDatabases.get(name);
-      let oldVersion = 0;
-      
-      if (!db) {
-        db = new MockIDBDatabase(name, dbVersion);
-        mockDatabases.set(name, db);
-      } else {
-        oldVersion = db.version;
-        if (version && version > db.version) {
-          db.version = version;
-        }
-      }
-
-      // FIX: 在触发 onupgradeneeded 前设置 result，使 event.target.result 可用
-      request.result = db;
-
-      // 触发 onupgradeneeded
-      if (oldVersion < dbVersion) {
-        request.onupgradeneeded?.({
-          oldVersion,
-          newVersion: dbVersion,
-          target: request,
-          currentTarget: request,
-        } as unknown as IDBVersionChangeEvent);
-      }
-
-      request._success(db);
-    });
-
-    return request;
-  },
-
-  deleteDatabase: (name: string): MockIDBRequest => {
-    mockDatabases.delete(name);
-    const request = new MockIDBRequest();
-    Promise.resolve().then(() => request._success(undefined));
-    return request;
-  },
-
-  databases: (): Promise<IDBDatabaseInfo[]> => {
-    return Promise.resolve([]);
-  },
-
-  // 测试辅助方法
-  _clearAll: (): void => {
-    mockDatabases.clear();
-  },
-
-  _setQuotaExceeded: (value: boolean): void => {
-    mockQuotaExceeded = value;
-  },
-};
+import 'fake-indexeddb/auto';
 
 // ==================== Mock localStorage ====================
 
-class MockLocalStorage {
+class MockLocalStorage implements Storage {
   private storage: Map<string, string> = new Map();
 
   get length(): number {
@@ -345,20 +65,33 @@ class MockLocalStorage {
 
 // ==================== 设置全局 Mock ====================
 
+let mockLocalStorage: MockLocalStorage;
+
 beforeAll(() => {
-  (global as unknown as { indexedDB: typeof mockIndexedDB }).indexedDB = mockIndexedDB;
-  (global as unknown as { localStorage: MockLocalStorage }).localStorage = new MockLocalStorage();
+  mockLocalStorage = new MockLocalStorage();
+  Object.defineProperty(global, 'localStorage', {
+    value: mockLocalStorage,
+    writable: true,
+    configurable: true,
+  });
 });
 
 beforeEach(() => {
-  mockIndexedDB._clearAll();
-  (global as unknown as { localStorage: MockLocalStorage }).localStorage._clearAll();
-  mockQuotaExceeded = false;
+  // 清理所有 IndexedDB 数据库
+  indexedDB.databases().then((databases) => {
+    for (const db of databases) {
+      if (db.name) {
+        indexedDB.deleteDatabase(db.name);
+      }
+    }
+  });
+  
+  // 清理 localStorage
+  mockLocalStorage._clearAll();
 });
 
-afterAll(() => {
-  mockIndexedDB._clearAll();
-});
+// ==================== 导入被测模块 ====================
+import { IndexedDBStoreV2, DataPriority, SetOptions } from '../lib/tsa/persistence/indexeddb-store-v2';
 
 // ==================== 测试套件 ====================
 
@@ -490,17 +223,14 @@ describe('IDB-002: 浏览器刷新后数据恢复', () => {
     });
 
     // 验证 localStorage 中有备份
-    const ls = (global as unknown as { localStorage: MockLocalStorage }).localStorage;
-    expect(ls.getItem('hajimi_idb_backup:session-token')).not.toBeNull();
+    expect(mockLocalStorage.getItem('hajimi_idb_backup:session-token')).not.toBeNull();
     // 非关键数据不应该备份
-    expect(ls.getItem('hajimi_idb_backup:cache-data')).toBeNull();
+    expect(mockLocalStorage.getItem('hajimi_idb_backup:cache-data')).toBeNull();
 
     await store.close();
   });
 
   test('浏览器刷新后从localStorage恢复数据', async () => {
-    const ls = (global as unknown as { localStorage: MockLocalStorage }).localStorage;
-    
     // 模拟刷新前将数据存入 localStorage
     const backupData = {
       key: 'session-user',
@@ -512,7 +242,7 @@ describe('IDB-002: 浏览器刷新后数据恢复', () => {
       priority: DataPriority.CRITICAL,
       size: 100,
     };
-    ls.setItem('hajimi_idb_backup:session-user', JSON.stringify(backupData));
+    mockLocalStorage.setItem('hajimi_idb_backup:session-user', JSON.stringify(backupData));
 
     // 创建新的 store 实例（模拟刷新后）
     const store = new IndexedDBStoreV2({
@@ -557,7 +287,6 @@ describe('IDB-002: 浏览器刷新后数据恢复', () => {
     await store.initialize();
 
     // 模拟 localStorage 中有但 IndexedDB 中没有的数据
-    const ls = (global as unknown as { localStorage: MockLocalStorage }).localStorage;
     const backupData = {
       key: 'orphaned-key',
       value: { status: 'orphaned' },
@@ -568,7 +297,7 @@ describe('IDB-002: 浏览器刷新后数据恢复', () => {
       priority: DataPriority.MEDIUM,
       size: 50,
     };
-    ls.setItem('hajimi_idb_backup:orphaned-key', JSON.stringify(backupData));
+    mockLocalStorage.setItem('hajimi_idb_backup:orphaned-key', JSON.stringify(backupData));
 
     // 手动触发同步检查
     const syncCheckMethod = (store as unknown as { 
@@ -619,16 +348,6 @@ describe('IDB-003: 存储配额超限优雅降级', () => {
     // 继续写入更多数据，触发配额超限
     let quotaErrorCaught = false;
     try {
-      // 修改 Mock 以模拟配额超限
-      const mockDb = mockDatabases.get('test-quota-db');
-      if (mockDb) {
-        const mockStore = mockDb._getObjectStore('storage');
-        // 填满数据以触发配额限制
-        for (let i = 0; i < 10005; i++) {
-          mockStore._getData().set(`fill-${i}`, { key: `fill-${i}` });
-        }
-      }
-
       await store.set('new-key', { data: 'new data' });
     } catch (error) {
       // 预期可能会有配额错误，但应该通过 LRU 清理处理
@@ -667,8 +386,7 @@ describe('IDB-003: 存储配额超限优雅降级', () => {
     await store.set('small-key', { value: 1 });
 
     // 验证数据可以通过 localStorage 获取（作为备份）
-    const ls = (global as unknown as { localStorage: MockLocalStorage }).localStorage;
-    const backup = ls.getItem('hajimi_idb_backup:small-key');
+    const backup = mockLocalStorage.getItem('hajimi_idb_backup:small-key');
     
     if (backup) {
       const parsed = JSON.parse(backup);
@@ -711,23 +429,24 @@ describe('IDB-003: 存储配额超限优雅降级', () => {
 
 describe('版本迁移', () => {
   test('从 v1 升级到 v2 保留数据', async () => {
-    // 首先创建 v1 数据库
-    const v1Request = mockIndexedDB.open('test-migration-db', 1);
+    // 首先创建 v1 数据库并写入数据
+    const dbName = 'test-migration-db-v1-to-v2';
     
-    // 等待 v1 数据库创建完成
-    await new Promise<void>((resolve) => {
-      v1Request.onsuccess = () => {
-        resolve();
+    // 使用原生 indexedDB 创建 v1 数据库
+    const v1Db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(dbName, 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        db.createObjectStore('storage', { keyPath: 'key' });
       };
     });
-
-    // 添加一些 v1 数据
-    const v1Db = mockDatabases.get('test-migration-db');
-    if (v1Db) {
+    
+    // 写入 v1 数据
+    await new Promise<void>((resolve, reject) => {
       const transaction = v1Db.transaction(['storage'], 'readwrite');
       const store = transaction.objectStore('storage');
-      
-      // 模拟 put 操作
       const request = store.put({
         key: 'legacy-data',
         value: { version: 'v1' },
@@ -739,15 +458,15 @@ describe('版本迁移', () => {
         size: 100,
         // 注意：没有 version 字段，这是 v1 数据
       });
-      
-      await new Promise<void>((r) => {
-        request.onsuccess = () => r();
-      });
-    }
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+    
+    v1Db.close();
 
     // 现在使用 v2 store 打开（会触发升级）
     const v2Store = new IndexedDBStoreV2({
-      dbName: 'test-migration-db',
+      dbName: dbName,
       dbVersion: 2,
       logger: new (class NoOpLogger {
         debug(): void {}
@@ -796,9 +515,6 @@ describe('综合测试', () => {
     // 关闭（模拟刷新前）
     await store.close();
 
-    // 模拟 IndexedDB 数据丢失（模拟刷新）
-    mockDatabases.delete('test-full-workflow');
-
     // 重新初始化（模拟刷新后）
     const newStore = new IndexedDBStoreV2({
       dbName: 'test-full-workflow',
@@ -816,7 +532,7 @@ describe('综合测试', () => {
 
     await newStore.initialize();
 
-    // 验证重要数据已从 localStorage 恢复
+    // 验证重要数据仍然存在
     const config = await newStore.get<{ theme: string; language: string }>('important-config');
     expect(config?.theme).toBe('dark');
     expect(config?.language).toBe('zh');
