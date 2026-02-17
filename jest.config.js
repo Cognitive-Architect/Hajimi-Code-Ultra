@@ -9,7 +9,7 @@ const config = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
-  testMatch: ['**/tests/**/*.test.ts', '**/tests/**/*.perf.ts'],
+  testMatch: ['**/tests/**/*.test.ts', '**/tests/**/*.perf.ts', '**/lib/alice/__tests__/**/*.test.ts', '**/lib/lcr/**/__tests__/**/*.test.ts'],
   testPathIgnorePatterns: [
     '/node_modules/',
     '/tests/unit/hooks.test.ts',

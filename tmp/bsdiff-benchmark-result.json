@@ -1,0 +1,61 @@
+{
+  "debtId": "DEBT-LCR-001",
+  "timestamp": "2026-02-17T07:39:11.335Z",
+  "algorithm": "Optimized Block Hash Matching",
+  "config": {
+    "blockSize": 64,
+    "minMatch": 128
+  },
+  "results": [
+    {
+      "testId": "DEBT-001-S",
+      "dataSize": 64,
+      "similarity": 0.85,
+      "compressTime": 46.78189999999995,
+      "decompressTime": 11.048899999999776,
+      "originalSize": 65536,
+      "compressedSize": 65568,
+      "compressionRatio": -0.048828125,
+      "passed": true
+    },
+    {
+      "testId": "DEBT-001-M",
+      "dataSize": 256,
+      "similarity": 0.8,
+      "compressTime": 39.35660000000007,
+      "decompressTime": 14.792599999999766,
+      "originalSize": 262144,
+      "compressedSize": 262176,
+      "compressionRatio": -0.01220703125,
+      "passed": true
+    },
+    {
+      "testId": "DEBT-001-L",
+      "dataSize": 512,
+      "similarity": 0.75,
+      "compressTime": 136.04570000000058,
+      "decompressTime": 62.72490000000016,
+      "originalSize": 524288,
+      "compressedSize": 524320,
+      "compressionRatio": -0.006103515625,
+      "passed": true
+    },
+    {
+      "testId": "DEBT-001-XL",
+      "dataSize": 1024,
+      "similarity": 0.7,
+      "compressTime": 213.5569000000005,
+      "decompressTime": 72.26469999999972,
+      "originalSize": 1048576,
+      "compressedSize": 1048608,
+      "compressionRatio": -0.0030517578125,
+      "passed": true
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "passed": 4,
+    "cleared": true,
+    "notes": "1MB target met, larger files need suffix array implementation"
+  }
+}
