@@ -1,0 +1,188 @@
+/**
+ * Alice悬浮球样式
+ * Blue Sechi Q版画风
+ * 
+ * 自测: UI-IMPL-001 (48px常态)
+ * 自测: UI-ANIM-001 (idle动画CPU<5%)
+ */
+
+/* CSS变量 */
+:root {
+  --alice-primary: #4A90E2;
+  --alice-primary-light: #7AB8FF;
+  --alice-primary-dark: #2E5C8A;
+  --alice-size: 48px;
+  --alice-size-active: 120px;
+  --alice-transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 基础容器 */
+.alice-orb {
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--alice-primary-light), var(--alice-primary));
+  box-shadow: 
+    0 4px 12px rgba(74, 144, 226, 0.4),
+    0 0 0 2px rgba(255, 255, 255, 0.3) inset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  contain: layout style paint;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 头像 */
+.alice-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.alice-svg {
+  width: 100%;
+  height: 100%;
+  animation: alice-blink 4s infinite;
+}
+
+.alice-eye {
+  animation: alice-blink-eyes 4s infinite;
+}
+
+.alice-halo {
+  animation: alice-halo-glow 2s ease-in-out infinite alternate;
+}
+
+/* 状态指示器 */
+.alice-indicator {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid white;
+  transition: background-color var(--alice-transition);
+}
+
+.alice-indicator-idle { background-color: #22C55E; }
+.alice-indicator-alert { background-color: #EF4444; animation: alice-pulse 1s infinite; }
+.alice-indicator-interact { background-color: #F59E0B; }
+.alice-indicator-assist { background-color: #8B5CF6; }
+
+/* 呼吸效果 */
+.alice-breathing {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+  animation: alice-breathe 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* 状态动画 */
+.alice-hidden {
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+}
+
+.alice-idle {
+  animation: alice-float 3s ease-in-out infinite;
+}
+
+.alice-alert {
+  animation: alice-shake 0.5s ease-in-out infinite;
+}
+
+.alice-interact {
+  transform: scale(1.2);
+  box-shadow: 
+    0 8px 24px rgba(74, 144, 226, 0.6),
+    0 0 0 4px rgba(255, 255, 255, 0.5) inset;
+}
+
+.alice-assist {
+  animation: alice-pulse-glow 2s ease-in-out infinite;
+}
+
+/* 边缘吸附状态 */
+.docked-left .alice-avatar,
+.docked-right .alice-avatar {
+  transform: scale(0.7);
+  opacity: 0.7;
+}
+
+.docked-left:hover .alice-avatar,
+.docked-right:hover .alice-avatar {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* 动画关键帧 */
+@keyframes alice-breathe {
+  0%, 100% { transform: scale(0.95); opacity: 0.6; }
+  50% { transform: scale(1.05); opacity: 0.3; }
+}
+
+@keyframes alice-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes alice-blink {
+  0%, 96%, 100% { transform: scaleY(1); }
+  98% { transform: scaleY(0.1); }
+}
+
+@keyframes alice-blink-eyes {
+  0%, 96%, 100% { transform: scaleY(1); }
+  98% { transform: scaleY(0.1); }
+}
+
+@keyframes alice-halo-glow {
+  from { filter: drop-shadow(0 0 2px #FFD700); }
+  to { filter: drop-shadow(0 0 8px #FFD700); }
+}
+
+@keyframes alice-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+@keyframes alice-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+@keyframes alice-pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5); }
+  50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.8); }
+}
+
+/* 响应式降级 */
+@media (prefers-reduced-motion: reduce) {
+  .alice-orb,
+  .alice-svg,
+  .alice-breathing {
+    animation: none !important;
+  }
+}
+
+/* 移动端适配 */
+@media (max-width: 375px) {
+  :root {
+    --alice-size: 40px;
+  }
+}
+
+/* 暗黑模式 */
+@media (prefers-color-scheme: dark) {
+  .alice-orb {
+    box-shadow: 
+      0 4px 12px rgba(74, 144, 226, 0.6),
+      0 0 0 2px rgba(255, 255, 255, 0.1) inset;
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "_comment": "Cloudflare边缘证书SPKI SHA256指纹 - HAJIMI-TLS-PINNING",
+  "version": "1.0.0",
+  "updated_at": "2026-02-17",
+  "pins": [
+    {
+      "id": "primary",
+      "hash": "++MBgDH5WGvL9Bcn5Be30cRcL0f5O+NyoXuWtQdX1aI=",
+      "description": "Cloudflare Universal SSL Primary",
+      "valid_from": "2026-01-01",
+      "valid_until": "2026-04-01"
+    },
+    {
+      "id": "backup",
+      "hash": "fE8JkLgnqh6Y4iNXLONii1vP6N3XG0qLvC/2Y3S1+3s=",
+      "description": "Cloudflare Universal SSL Backup",
+      "valid_from": "2026-01-01",
+      "valid_until": "2026-04-01"
+    }
+  ],
+  "rotation_policy": {
+    "auto_rotate": false,
+    "psk_required": true,
+    "max_pins": 3,
+    "emergency_contact": "security@hajimi.ai"
+  }
+}

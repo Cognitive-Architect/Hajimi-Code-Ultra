@@ -1,0 +1,121 @@
+{
+  "$schema": "./or-bypass.schema.json",
+  "version": "1.0.0",
+  "description": "OpenRouter IP直连配置 - HAJIMI-OR-IPDIRECT",
+  
+  "environment": "${OR_ENV:-production}",
+  "_comment_environment": "可选值: mock, production, ipdirect",
+  
+  "connection": {
+    "strategy": "ipdirect",
+    "_comment_strategy": "连接策略: standard(标准DNS), ipdirect(IP直连), mock(模拟响应)",
+    
+    "ipdirect": {
+      "enabled": true,
+      "primaryIP": "104.21.63.51",
+      "backupIPs": [
+        "104.21.63.52",
+        "172.67.139.30",
+        "104.21.32.1"
+      ],
+      "healthCheck": {
+        "intervalMs": 30000,
+        "tcpTimeoutMs": 5000,
+        "httpTimeoutMs": 10000,
+        "failureThreshold": 3
+      }
+    },
+    
+    "standard": {
+      "enabled": false,
+      "endpoint": "https://api.openrouter.ai",
+      "timeoutMs": 30000
+    },
+    
+    "mock": {
+      "enabled": false,
+      "latencyMs": 100,
+      "errorRate": 0
+    }
+  },
+  
+  "tls": {
+    "rejectUnauthorized": false,
+    "_comment_rejectUnauthorized": "⚠️ 安全风险：仅在Cloudflare IP白名单内使用",
+    "servername": "api.openrouter.ai",
+    "pinnedIPRanges": [
+      "104.21.0.0/16",
+      "172.67.0.0/16"
+    ],
+    "_warning": "生产环境建议配合IP白名单使用，防止中间人攻击"
+  },
+  
+  "models": {
+    "mapping": {
+      "deepseek-v3": "deepseek/deepseek-chat",
+      "deepseek-chat": "deepseek/deepseek-chat",
+      "deepseek-coder": "deepseek/deepseek-coder",
+      "gpt-4": "openai/gpt-4",
+      "gpt-4o": "openai/gpt-4o",
+      "gpt-4o-mini": "openai/gpt-4o-mini",
+      "gpt-3.5-turbo": "openai/gpt-3.5-turbo",
+      "claude-3-opus": "anthropic/claude-3-opus",
+      "claude-3-sonnet": "anthropic/claude-3-sonnet",
+      "claude-3-haiku": "anthropic/claude-3-haiku",
+      "gemini-pro": "google/gemini-pro",
+      "gemini-flash": "google/gemini-flash-1.5",
+      "llama-3-70b": "meta-llama/llama-3-70b-instruct",
+      "llama-3-8b": "meta-llama/llama-3-8b-instruct"
+    },
+    "default": "deepseek/deepseek-chat",
+    "maxTokens": 32000
+  },
+  
+  "resilience": {
+    "circuitBreaker": {
+      "enabled": true,
+      "failureThreshold": 3,
+      "resetTimeoutMs": 30000,
+      "halfOpenMaxCalls": 2
+    },
+    "retry": {
+      "enabled": true,
+      "maxRetries": 2,
+      "backoffMs": 1000
+    },
+    "fallback": {
+      "enabled": true,
+      "toMock": true,
+      "maxFallbackDurationMs": 300000
+    }
+  },
+  
+  "telemetry": {
+    "enabled": true,
+    "verbose": false,
+    "sampleRate": 1.0,
+    "logPrefix": "[OR-DIRECT]",
+    "emitMetrics": true
+  },
+  
+  "security": {
+    "apiKeySource": "env",
+    "_comment_apiKeySource": "env(环境变量) | vault(密钥管理系统)",
+    "apiKeyEnvVar": "OPENROUTER_API_KEY",
+    "ipWhitelistEnforced": true,
+    "auditLogEnabled": true
+  },
+  
+  "emergency": {
+    "killSwitch": {
+      "enabled": false,
+      "filePath": ".emergency/or-kill-switch",
+      "checkIntervalMs": 5000
+    },
+    "autoRollback": {
+      "enabled": true,
+      "consecutiveFailures": 10,
+      "toStrategy": "mock"
+    }
+  }
+}
