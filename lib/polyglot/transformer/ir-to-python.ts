@@ -1,0 +1,1051 @@
+/**
+ * HAJIMI-PHASE2-IMPL-001: B-02/06
+ * Hajimi-IR → Python代码生成器
+ * 
+ * 将Hajimi-IR中间表示转换为Python代码
+ * @module lib/polyglot/transformer/ir-to-python
+ */
+
+import {
+  Module,
+  Statement,
+  Expression,
+  Identifier,
+  Literal,
+  BinaryExpression,
+  UnaryExpression,
+  CallExpression,
+  MemberExpression,
+  ArrayExpression,
+  ObjectExpression,
+  Property,
+  ArrowFunction,
+  FunctionDeclaration,
+  VariableDeclaration,
+  VariableDeclarator,
+  BlockStatement,
+  IfStatement,
+  ReturnStatement,
+  ExpressionStatement,
+  ImportDeclaration,
+  ImportSpecifier,
+  ExportDeclaration,
+  AwaitExpression,
+  SpreadElement,
+  ConditionalExpression,
+  WhileStatement,
+  ForStatement,
+  TryStatement,
+  CatchClause,
+  ClassDeclaration,
+  ClassBody,
+  MethodDefinition,
+  PropertyDefinition,
+  SwitchStatement,
+  SwitchCase,
+  BreakStatement,
+  ContinueStatement,
+  ThrowStatement,
+  Comment,
+  NodeKind,
+  TypeKind,
+  TypeNode,
+  PrimitiveType,
+  LiteralType,
+  ArrayType,
+  ObjectType,
+  FunctionType,
+  UnionType,
+  TypeReference,
+  ParameterType,
+} from '../ir/ast';
+
+/**
+ * Python代码生成选项
+ */
+export interface PythonGenOptions {
+  pythonVersion?: '3.9' | '3.10' | '3.11' | '3.12';
+  addTypeHints?: boolean;
+  useDataclasses?: boolean;
+  asyncMode?: 'asyncio' | 'trio';
+  indentSize?: number;
+  lineLength?: number;
+  addFutureAnnotations?: boolean;
+}
+
+/**
+ * 默认生成选项
+ */
+const defaultOptions: PythonGenOptions = {
+  pythonVersion: '3.11',
+  addTypeHints: true,
+  useDataclasses: true,
+  asyncMode: 'asyncio',
+  indentSize: 4,
+  lineLength: 88,
+  addFutureAnnotations: true,
+};
+
+/**
+ * Node.js标准库到Python的映射
+ */
+const NODE_TO_PYTHON_LIBS: Record<string, string> = {
+  'fs': 'pathlib, os',
+  'fs/promises': 'aiofiles, pathlib',
+  'path': 'pathlib, os.path',
+  'http': 'http.server, aiohttp',
+  'https': 'http.server, aiohttp',
+  'express': 'fastapi, flask',
+  'crypto': 'hashlib, secrets, cryptography',
+  'events': 'asyncio',
+  'stream': 'io, asyncio.streams',
+  'buffer': 'bytes, bytearray',
+  'url': 'urllib.parse',
+  'querystring': 'urllib.parse',
+  'os': 'os, platform',
+  'process': 'sys, os',
+  'util': 'typing, functools',
+  'assert': 'assert',
+  'console': 'logging, print',
+  'timers': 'asyncio, threading',
+  'zlib': 'gzip, zlib',
+};
+
+/**
+ * JavaScript内置对象到Python的映射
+ */
+const JS_TO_PYTHON_GLOBALS: Record<string, string> = {
+  'console.log': 'print',
+  'console.error': 'print',
+  'console.warn': 'print',
+  'JSON.stringify': 'json.dumps',
+  'JSON.parse': 'json.loads',
+  'Object.keys': 'list(dict.keys())',
+  'Object.values': 'list(dict.values())',
+  'Object.entries': 'list(dict.items())',
+  'Array.isArray': 'isinstance(..., list)',
+  'parseInt': 'int',
+  'parseFloat': 'float',
+  'isNaN': 'math.isnan',
+  'isFinite': 'math.isfinite',
+  'setTimeout': 'asyncio.sleep',
+  'setInterval': 'asyncio.loop.create_task',
+  'clearTimeout': 'task.cancel',
+  'Promise': 'asyncio.Future',
+  'Map': 'dict',
+  'Set': 'set',
+  'WeakMap': 'weakref.WeakKeyDictionary',
+  'WeakSet': 'weakref.WeakSet',
+  'Date': 'datetime.datetime',
+  'Math': 'math',
+  'Error': 'Exception',
+  'TypeError': 'TypeError',
+  'ReferenceError': 'NameError',
+  'SyntaxError': 'SyntaxError',
+  'RangeError': 'ValueError',
+};
+
+/**
+ * 运算符映射
+ */
+const OPERATOR_MAP: Record<string, string> = {
+  '===': '==',
+  '!==': '!=',
+  '==': '==',
+  '!=': '!=',
+  '&&': 'and',
+  '||': 'or',
+  '!': 'not ',
+  'typeof': 'type(',
+  'instanceof': 'isinstance(',
+  '++': '+= 1',
+  '--': '-= 1',
+  '**': '**',
+  '//': '//',
+};
+
+/**
+ * Python代码生成器
+ */
+export class IRToPythonGenerator {
+  private options: PythonGenOptions;
+  private indent: number = 0;
+  private output: string[] = [];
+  private imports: Set<string> = new Set();
+  private fromImports: Map<string, Set<string>> = new Map();
+  private typeVars: Set<string> = new Set();
+  private classContext: boolean = false;
+  private inAsyncContext: boolean = false;
+  
+  constructor(options: PythonGenOptions = {}) {
+    this.options = { ...defaultOptions, ...options };
+  }
+  
+  /**
+   * 生成Python代码
+   * @param module Hajimi-IR模块
+   * @returns Python代码字符串
+   */
+  generate(module: Module): string {
+    this.output = [];
+    this.indent = 0;
+    this.imports = new Set();
+    this.fromImports = new Map();
+    this.typeVars = new Set();
+    
+    // 生成文件头
+    this.generateHeader(module);
+    
+    // 处理导入
+    for (const imp of module.imports) {
+      this.generateImport(imp);
+    }
+    
+    // 添加必要的标准库导入
+    this.addStandardImports();
+    
+    // 生成语句
+    for (const stmt of module.statements) {
+      this.generateStatement(stmt);
+      this.output.push('');
+    }
+    
+    // 生成导出
+    for (const exp of module.exports) {
+      this.generateExport(exp);
+    }
+    
+    // 组合最终输出
+    return this.assembleOutput();
+  }
+  
+  /**
+   * 生成文件头
+   */
+  private generateHeader(module: Module): void {
+    this.output.push(`# Generated by Hajimi Polyglot Transpiler`);
+    this.output.push(`# Source: ${module.fileName}`);
+    this.output.push(`# Target: Python ${this.options.pythonVersion}`);
+    this.output.push('');
+    
+    if (this.options.addFutureAnnotations) {
+      this.output.push('from __future__ import annotations');
+      this.output.push('');
+    }
+  }
+  
+  /**
+   * 添加标准库导入
+   */
+  private addStandardImports(): void {
+    // 基础类型支持
+    if (this.options.addTypeHints) {
+      this.fromImports.set('typing', new Set([
+        'Any', 'Optional', 'Union', 'List', 'Dict', 'Set', 'Tuple',
+        'Callable', 'TypeVar', 'Generic', ' cast',
+      ]));
+    }
+    
+    // 异步支持
+    this.imports.add('asyncio');
+    
+    // 数据结构
+    if (this.options.useDataclasses) {
+      this.fromImports.set('dataclasses', new Set(['dataclass', 'field']));
+    }
+    
+    // JSON处理
+    this.imports.add('json');
+    
+    // 路径处理
+    this.fromImports.set('pathlib', new Set(['Path']));
+    
+    // 枚举支持
+    this.fromImports.set('enum', new Set(['Enum', 'auto']));
+  }
+  
+  /**
+   * 组装最终输出
+   */
+  private assembleOutput(): string {
+    const lines: string[] = [];
+    
+    // 添加from imports
+    for (const [module, names] of this.fromImports) {
+      const sortedNames = Array.from(names).sort();
+      lines.push(`from ${module} import ${sortedNames.join(', ')}`);
+    }
+    
+    // 添加普通imports
+    for (const imp of Array.from(this.imports).sort()) {
+      lines.push(`import ${imp}`);
+    }
+    
+    lines.push('');
+    
+    // 添加类型变量定义
+    if (this.typeVars.size > 0) {
+      for (const tv of this.typeVars) {
+        lines.push(`${tv} = TypeVar('${tv}')`);
+      }
+      lines.push('');
+    }
+    
+    // 添加主体代码
+    lines.push(...this.output);
+    
+    return lines.join('\n');
+  }
+  
+  /**
+   * 生成导入语句
+   */
+  private generateImport(node: ImportDeclaration): void {
+    const pythonModule = NODE_TO_PYTHON_LIBS[node.source] || node.source.replace(/^@/, '').replace(/\//g, '.');
+    
+    if (node.specifiers.length === 0) {
+      // 整模块导入
+      this.imports.add(pythonModule);
+    } else {
+      for (const spec of node.specifiers) {
+        if (spec.isDefault) {
+          // Python中没有默认导入，转换为as导入
+          this.imports.add(`${pythonModule} as ${spec.local}`);
+        } else if (spec.isNamespace) {
+          // 命名空间导入
+          this.fromImports.set(pythonModule, new Set(['*']));
+        } else {
+          // 命名导入
+          const names = this.fromImports.get(pythonModule) || new Set();
+          names.add(spec.imported || spec.local);
+          this.fromImports.set(pythonModule, names);
+        }
+      }
+    }
+  }
+  
+  /**
+   * 生成导出
+   */
+  private generateExport(node: ExportDeclaration): void {
+    // Python使用__all__定义公开API
+    if (node.isDefault) {
+      // 默认导出在Python中没有直接对应
+      this.output.push(`# Default export: ${node.declaration}`);
+    }
+  }
+  
+  /**
+   * 生成语句
+   */
+  private generateStatement(node: Statement): void {
+    switch (node.kind) {
+      case NodeKind.FUNCTION_DECL:
+        this.generateFunctionDeclaration(node as FunctionDeclaration);
+        break;
+      case NodeKind.VARIABLE_DECL:
+        this.generateVariableDeclaration(node as VariableDeclaration);
+        break;
+      case NodeKind.CLASS_DECL:
+        this.generateClassDeclaration(node as ClassDeclaration);
+        break;
+      case NodeKind.IF_STMT:
+        this.generateIfStatement(node as IfStatement);
+        break;
+      case NodeKind.WHILE_STMT:
+        this.generateWhileStatement(node as WhileStatement);
+        break;
+      case NodeKind.FOR_STMT:
+        this.generateForStatement(node as ForStatement);
+        break;
+      case NodeKind.TRY_STMT:
+        this.generateTryStatement(node as TryStatement);
+        break;
+      case NodeKind.RETURN_STMT:
+        this.generateReturnStatement(node as ReturnStatement);
+        break;
+      case NodeKind.THROW_STMT:
+        this.generateThrowStatement(node as ThrowStatement);
+        break;
+      case NodeKind.BREAK_STMT:
+        this.output.push(`${this.getIndent()}break`);
+        break;
+      case NodeKind.CONTINUE_STMT:
+        this.output.push(`${this.getIndent()}continue`);
+        break;
+      case NodeKind.SWITCH_STMT:
+        this.generateSwitchStatement(node as SwitchStatement);
+        break;
+      case NodeKind.BLOCK_STMT:
+        this.generateBlockStatement(node as BlockStatement, false);
+        break;
+      case NodeKind.EXPRESSION_STMT:
+        this.generateExpressionStatement(node as ExpressionStatement);
+        break;
+      default:
+        this.output.push(`${this.getIndent()}# Unsupported statement: ${node.kind}`);
+    }
+  }
+  
+  /**
+   * 生成函数声明
+   */
+  private generateFunctionDeclaration(node: FunctionDeclaration): void {
+    const wasAsync = this.inAsyncContext;
+    this.inAsyncContext = node.isAsync || this.inAsyncContext;
+    
+    const async = node.isAsync ? 'async ' : '';
+    const name = this.toSnakeCase(node.id.name);
+    
+    // 类型参数
+    if (node.typeParameters) {
+      for (const tp of node.typeParameters) {
+        this.typeVars.add(tp);
+      }
+    }
+    
+    // 参数
+    const params = node.params.map(p => {
+      const paramName = this.toSnakeCase(p.name);
+      const typeHint = this.options.addTypeHints && p.typeAnnotation
+        ? `: ${this.generateTypeAnnotation(p.typeAnnotation)}`
+        : '';
+      return `${paramName}${typeHint}`;
+    });
+    
+    // 返回类型
+    const returnType = this.options.addTypeHints && node.returnType
+      ? ` -> ${this.generateTypeAnnotation(node.returnType)}`
+      : '';
+    
+    this.output.push(`${this.getIndent()}${async}def ${name}(${params.join(', ')})${returnType}:`);
+    
+    this.indent++;
+    if (node.body.statements.length === 0) {
+      this.output.push(`${this.getIndent()}pass`);
+    } else {
+      this.generateBlockStatement(node.body, true);
+    }
+    this.indent--;
+    
+    this.inAsyncContext = wasAsync;
+  }
+  
+  /**
+   * 生成类声明
+   */
+  private generateClassDeclaration(node: ClassDeclaration): void {
+    const wasInClass = this.classContext;
+    this.classContext = true;
+    
+    const name = node.id.name;
+    const bases: string[] = [];
+    
+    // 处理继承
+    if (node.superClass) {
+      const superName = this.generateExpression(node.superClass, false);
+      bases.push(superName);
+    }
+    
+    // 添加ABC支持（如果有抽象方法）
+    const hasAbstract = node.body.members.some(m => 
+      m instanceof MethodDefinition && m.isAbstract
+    );
+    if (hasAbstract) {
+      this.fromImports.set('abc', new Set(['ABC', 'abstractmethod']));
+      bases.push('ABC');
+    }
+    
+    const baseStr = bases.length > 0 ? `(${bases.join(', ')})` : '';
+    
+    this.output.push(`${this.getIndent()}class ${name}${baseStr}:`);
+    
+    this.indent++;
+    
+    // 类型变量
+    if (node.typeParameters) {
+      for (const tp of node.typeParameters) {
+        this.output.push(`${this.getIndent()}# TypeVar: ${tp}`);
+      }
+    }
+    
+    if (node.body.members.length === 0) {
+      this.output.push(`${this.getIndent()}pass`);
+    } else {
+      for (const member of node.body.members) {
+        if (member instanceof MethodDefinition) {
+          this.generateMethodDefinition(member);
+        } else if (member instanceof PropertyDefinition) {
+          this.generatePropertyDefinition(member);
+        }
+      }
+    }
+    
+    this.indent--;
+    this.classContext = wasInClass;
+  }
+  
+  /**
+   * 生成方法定义
+   */
+  private generateMethodDefinition(node: MethodDefinition): void {
+    const wasAsync = this.inAsyncContext;
+    this.inAsyncContext = node.isAsync || this.inAsyncContext;
+    
+    const async = node.isAsync ? 'async ' : '';
+    const static_ = node.isStatic ? '@staticmethod\n' : '';
+    const abstract = node.isAbstract ? '@abstractmethod\n' : '';
+    const name = this.toSnakeCase(node.key.name);
+    
+    // self/cls参数
+    const selfParam = node.isStatic ? '' : 'self';
+    const params = node.value.params.map(p => {
+      const paramName = this.toSnakeCase(p.name);
+      const typeHint = this.options.addTypeHints && p.typeAnnotation
+        ? `: ${this.generateTypeAnnotation(p.typeAnnotation)}`
+        : '';
+      return `${paramName}${typeHint}`;
+    });
+    
+    const allParams = selfParam ? [selfParam, ...params] : params;
+    
+    // 返回类型
+    const returnType = this.options.addTypeHints && node.value.returnType
+      ? ` -> ${this.generateTypeAnnotation(node.value.returnType)}`
+      : '';
+    
+    this.output.push(`${this.getIndent()}${static_}${this.getIndent()}${abstract}${this.getIndent()}${async}def ${name}(${allParams.join(', ')})${returnType}:`);
+    
+    this.indent++;
+    if (node.value.body.statements.length === 0 || node.isAbstract) {
+      if (node.isAbstract) {
+        this.output.push(`${this.getIndent()}...`);
+      } else {
+        this.output.push(`${this.getIndent()}pass`);
+      }
+    } else {
+      this.generateBlockStatement(node.value.body, true);
+    }
+    this.indent--;
+    
+    this.inAsyncContext = wasAsync;
+  }
+  
+  /**
+   * 生成属性定义
+   */
+  private generatePropertyDefinition(node: PropertyDefinition): void {
+    const name = this.toSnakeCase(node.key.name);
+    const typeHint = this.options.addTypeHints && node.typeAnnotation
+      ? `: ${this.generateTypeAnnotation(node.typeAnnotation)}`
+      : '';
+    
+    if (node.value) {
+      const value = this.generateExpression(node.value, false);
+      this.output.push(`${this.getIndent()}${name}${typeHint} = ${value}`);
+    } else {
+      this.output.push(`${this.getIndent()}${name}${typeHint} = None`);
+    }
+  }
+  
+  /**
+   * 生成变量声明
+   */
+  private generateVariableDeclaration(node: VariableDeclaration): void {
+    for (const decl of node.declarations) {
+      const name = this.toSnakeCase(decl.id.name);
+      const typeHint = this.options.addTypeHints && decl.id.typeAnnotation
+        ? `: ${this.generateTypeAnnotation(decl.id.typeAnnotation)}`
+        : '';
+      
+      if (decl.init) {
+        const value = this.generateExpression(decl.init, false);
+        const const_ = !node.isConst ? '' : '# const: ';
+        this.output.push(`${this.getIndent()}${const_}${name}${typeHint} = ${value}`);
+      } else {
+        this.output.push(`${this.getIndent()}${name}${typeHint} = None`);
+      }
+    }
+  }
+  
+  /**
+   * 生成If语句
+   */
+  private generateIfStatement(node: IfStatement): void {
+    const condition = this.generateExpression(node.condition, false);
+    this.output.push(`${this.getIndent()}if ${condition}:`);
+    
+    this.indent++;
+    this.generateStatement(node.consequent);
+    this.indent--;
+    
+    if (node.alternate) {
+      if (node.alternate.kind === NodeKind.IF_STMT) {
+        const elifCondition = this.generateExpression((node.alternate as IfStatement).condition, false);
+        this.output.push(`${this.getIndent()}elif ${elifCondition}:`);
+        this.indent++;
+        this.generateStatement((node.alternate as IfStatement).consequent);
+        this.indent--;
+        
+        if ((node.alternate as IfStatement).alternate) {
+          this.output.push(`${this.getIndent()}else:`);
+          this.indent++;
+          this.generateStatement((node.alternate as IfStatement).alternate!);
+          this.indent--;
+        }
+      } else {
+        this.output.push(`${this.getIndent()}else:`);
+        this.indent++;
+        this.generateStatement(node.alternate);
+        this.indent--;
+      }
+    }
+  }
+  
+  /**
+   * 生成While语句
+   */
+  private generateWhileStatement(node: WhileStatement): void {
+    if (node.isDoWhile) {
+      // Python没有do-while，转换为while True + break
+      this.output.push(`${this.getIndent()}while True:`);
+      this.indent++;
+      this.generateStatement(node.body);
+      const condition = this.generateExpression(node.condition, false);
+      this.output.push(`${this.getIndent()}if not (${condition}):`);
+      this.indent++;
+      this.output.push(`${this.getIndent()}break`);
+      this.indent--;
+      this.indent--;
+    } else {
+      const condition = this.generateExpression(node.condition, false);
+      this.output.push(`${this.getIndent()}while ${condition}:`);
+      this.indent++;
+      this.generateStatement(node.body);
+      this.indent--;
+    }
+  }
+  
+  /**
+   * 生成For语句
+   */
+  private generateForStatement(node: ForStatement): void {
+    // 简化处理：支持常见模式
+    if (node.init && node.condition && node.update) {
+      // 传统for循环转换为while
+      if (node.init.kind === NodeKind.VARIABLE_DECL) {
+        this.generateVariableDeclaration(node.init as VariableDeclaration);
+      } else {
+        this.generateExpressionStatement(new ExpressionStatement(node.init as Expression));
+      }
+      
+      const condition = this.generateExpression(node.condition, false);
+      this.output.push(`${this.getIndent()}while ${condition}:`);
+      this.indent++;
+      this.generateStatement(node.body);
+      this.generateExpressionStatement(new ExpressionStatement(node.update!));
+      this.indent--;
+    } else {
+      // 尝试识别range模式
+      this.output.push(`${this.getIndent()}# Converted for loop`);
+      this.output.push(`${this.getIndent()}while True:`);
+      this.indent++;
+      this.generateStatement(node.body);
+      this.indent--;
+    }
+  }
+  
+  /**
+   * 生成Try语句
+   */
+  private generateTryStatement(node: TryStatement): void {
+    this.output.push(`${this.getIndent()}try:`);
+    this.indent++;
+    this.generateBlockStatement(node.block, true);
+    this.indent--;
+    
+    if (node.handler) {
+      const excName = node.handler.param ? this.toSnakeCase(node.handler.param.name) : 'e';
+      this.output.push(`${this.getIndent()}except Exception as ${excName}:`);
+      this.indent++;
+      this.generateBlockStatement(node.handler.body, true);
+      this.indent--;
+    }
+    
+    if (node.finalizer) {
+      this.output.push(`${this.getIndent()}finally:`);
+      this.indent++;
+      this.generateBlockStatement(node.finalizer, true);
+      this.indent--;
+    }
+  }
+  
+  /**
+   * 生成Switch语句
+   */
+  private generateSwitchStatement(node: SwitchStatement): void {
+    const discriminant = this.generateExpression(node.discriminant, false);
+    
+    // 使用if-elif链实现switch
+    let first = true;
+    for (const case_ of node.cases) {
+      if (case_.test) {
+        const test = this.generateExpression(case_.test, false);
+        if (first) {
+          this.output.push(`${this.getIndent()}if ${discriminant} == ${test}:`);
+          first = false;
+        } else {
+          this.output.push(`${this.getIndent()}elif ${discriminant} == ${test}:`);
+        }
+      } else {
+        this.output.push(`${this.getIndent()}else:`);
+      }
+      
+      this.indent++;
+      for (const stmt of case_.consequent) {
+        this.generateStatement(stmt);
+      }
+      this.indent--;
+    }
+  }
+  
+  /**
+   * 生成Return语句
+   */
+  private generateReturnStatement(node: ReturnStatement): void {
+    if (node.argument) {
+      const value = this.generateExpression(node.argument, false);
+      this.output.push(`${this.getIndent()}return ${value}`);
+    } else {
+      this.output.push(`${this.getIndent()}return`);
+    }
+  }
+  
+  /**
+   * 生成Throw语句
+   */
+  private generateThrowStatement(node: ThrowStatement): void {
+    const value = this.generateExpression(node.argument, false);
+    this.output.push(`${this.getIndent()}raise ${value}`);
+  }
+  
+  /**
+   * 生成表达式语句
+   */
+  private generateExpressionStatement(node: ExpressionStatement): void {
+    const expr = this.generateExpression(node.expression, false);
+    this.output.push(`${this.getIndent()}${expr}`);
+  }
+  
+  /**
+   * 生成块语句
+   */
+  private generateBlockStatement(node: BlockStatement, inline: boolean): void {
+    if (!inline) {
+      this.output.push(`${this.getIndent()}# Block`);
+    }
+    
+    for (const stmt of node.statements) {
+      this.generateStatement(stmt);
+    }
+  }
+  
+  /**
+   * 生成表达式
+   */
+  private generateExpression(node: Expression, parenthesize: boolean = false): string {
+    switch (node.kind) {
+      case NodeKind.IDENTIFIER:
+        return this.toSnakeCase((node as Identifier).name);
+      case NodeKind.LITERAL:
+        return this.generateLiteral(node as Literal);
+      case NodeKind.BINARY_EXPR:
+        return this.generateBinaryExpression(node as BinaryExpression, parenthesize);
+      case NodeKind.UNARY_EXPR:
+        return this.generateUnaryExpression(node as UnaryExpression, parenthesize);
+      case NodeKind.CALL_EXPR:
+        return this.generateCallExpression(node as CallExpression);
+      case NodeKind.MEMBER_EXPR:
+        return this.generateMemberExpression(node as MemberExpression);
+      case NodeKind.ARRAY_EXPR:
+        return this.generateArrayExpression(node as ArrayExpression);
+      case NodeKind.OBJECT_EXPR:
+        return this.generateObjectExpression(node as ObjectExpression);
+      case NodeKind.ARROW_FUNCTION:
+        return this.generateArrowFunction(node as ArrowFunction);
+      case NodeKind.CONDITIONAL_EXPR:
+        return this.generateConditionalExpression(node as ConditionalExpression, parenthesize);
+      case NodeKind.AWAIT_EXPR:
+        return this.generateAwaitExpression(node as AwaitExpression);
+      case NodeKind.SPREAD_ELEMENT:
+        return this.generateSpreadElement(node as SpreadElement);
+      default:
+        return f`# Unsupported expression: ${node.kind}`;
+    }
+  }
+  
+  /**
+   * 生成字面量
+   */
+  private generateLiteral(node: Literal): string {
+    if (node.value === null) return 'None';
+    if (node.value === undefined) return 'None';
+    if (typeof node.value === 'boolean') return node.value ? 'True' : 'False';
+    if (typeof node.value === 'string') return JSON.stringify(node.value);
+    return String(node.value);
+  }
+  
+  /**
+   * 生成二元表达式
+   */
+  private generateBinaryExpression(node: BinaryExpression, parenthesize: boolean): string {
+    const left = this.generateExpression(node.left, true);
+    const right = this.generateExpression(node.right, true);
+    const op = OPERATOR_MAP[node.operator] || node.operator;
+    
+    // 特殊处理
+    if (node.operator === 'instanceof') {
+      return f`isinstance(${left}, ${right})`;
+    }
+    if (node.operator === 'in') {
+      return f`${right}.get(${left}) is not None`;
+    }
+    
+    const result = `${left} ${op} ${right}`;
+    return parenthesize ? `(${result})` : result;
+  }
+  
+  /**
+   * 生成一元表达式
+   */
+  private generateUnaryExpression(node: UnaryExpression, parenthesize: boolean): string {
+    const operand = this.generateExpression(node.operand, true);
+    const op = OPERATOR_MAP[node.operator] || node.operator;
+    
+    // typeof特殊处理
+    if (node.operator === 'typeof') {
+      return f`type(${operand}).__name__`;
+    }
+    
+    const result = node.isPrefix ? `${op}${operand}` : `${operand}${op}`;
+    return parenthesize ? `(${result})` : result;
+  }
+  
+  /**
+   * 生成调用表达式
+   */
+  private generateCallExpression(node: CallExpression): string {
+    const callee = this.generateExpression(node.callee, false);
+    
+    // 检查是否有内置映射
+    const mappedCallee = JS_TO_PYTHON_GLOBALS[callee] || callee;
+    
+    const args = node.arguments.map(arg => {
+      if (arg.kind === NodeKind.SPREAD_ELEMENT) {
+        return `*${this.generateExpression((arg as SpreadElement).argument, false)}`;
+      }
+      return this.generateExpression(arg, false);
+    });
+    
+    return `${mappedCallee}(${args.join(', ')})`;
+  }
+  
+  /**
+   * 生成成员表达式
+   */
+  private generateMemberExpression(node: MemberExpression): string {
+    const obj = this.generateExpression(node.object, false);
+    
+    if (node.computed) {
+      const prop = this.generateExpression(node.property as Expression, false);
+      return `${obj}[${prop}]`;
+    } else {
+      const prop = (node.property as Identifier).name;
+      
+      // 检查内置方法映射
+      const fullPath = `${obj}.${prop}`;
+      if (JS_TO_PYTHON_GLOBALS[fullPath]) {
+        return JS_TO_PYTHON_GLOBALS[fullPath];
+      }
+      
+      // 特殊属性映射
+      if (prop === 'length') {
+        return `len(${obj})`;
+      }
+      if (prop === 'toString') {
+        return `str(${obj})`;
+      }
+      
+      return `${obj}.${this.toSnakeCase(prop)}`;
+    }
+  }
+  
+  /**
+   * 生成数组表达式
+   */
+  private generateArrayExpression(node: ArrayExpression): string {
+    const elements = node.elements
+      .filter(e => e !== null)
+      .map(e => this.generateExpression(e!, false));
+    return `[${elements.join(', ')}]`;
+  }
+  
+  /**
+   * 生成对象表达式
+   */
+  private generateObjectExpression(node: ObjectExpression): string {
+    if (node.properties.length === 0) {
+      return '{}';
+    }
+    
+    const items: string[] = [];
+    for (const prop of node.properties) {
+      if (prop.key.kind === NodeKind.IDENTIFIER) {
+        const key = this.toSnakeCase((prop.key as Identifier).name);
+        const value = this.generateExpression(prop.value, false);
+        items.push(`"${key}": ${value}`);
+      } else {
+        const key = this.generateExpression(prop.key as Expression, false);
+        const value = this.generateExpression(prop.value, false);
+        items.push(`${key}: ${value}`);
+      }
+    }
+    
+    return `{${items.join(', ')}}`;
+  }
+  
+  /**
+   * 生成箭头函数（转换为lambda或嵌套函数）
+   */
+  private generateArrowFunction(node: ArrowFunction): string {
+    const params = node.params.map(p => this.toSnakeCase(p.name));
+    
+    if (node.body.kind !== NodeKind.BLOCK_STMT) {
+      // 简单lambda
+      const body = this.generateExpression(node.body as Expression, false);
+      return `lambda ${params.join(', ')}: ${body}`;
+    } else {
+      // 复杂函数，需要定义
+      const funcName = '_lambda_func';
+      const body = node.body as BlockStatement;
+      // 这种情况下应该生成一个完整的函数定义
+      // 简化处理
+      return `lambda ${params.join(', ')}: None  # Complex lambda not supported`;
+    }
+  }
+  
+  /**
+   * 生成条件表达式
+   */
+  private generateConditionalExpression(node: ConditionalExpression, parenthesize: boolean): string {
+    const condition = this.generateExpression(node.condition, false);
+    const consequent = this.generateExpression(node.consequent, false);
+    const alternate = this.generateExpression(node.alternate, false);
+    
+    const result = `${consequent} if ${condition} else ${alternate}`;
+    return parenthesize ? `(${result})` : result;
+  }
+  
+  /**
+   * 生成Await表达式
+   */
+  private generateAwaitExpression(node: AwaitExpression): string {
+    const argument = this.generateExpression(node.argument, false);
+    return `await ${argument}`;
+  }
+  
+  /**
+   * 生成Spread元素
+   */
+  private generateSpreadElement(node: SpreadElement): string {
+    const argument = this.generateExpression(node.argument, false);
+    return `*${argument}`;
+  }
+  
+  /**
+   * 生成类型注解
+   */
+  private generateTypeAnnotation(type: TypeNode): string {
+    switch (type.kind) {
+      case TypeKind.STRING:
+        return 'str';
+      case TypeKind.NUMBER:
+        return 'float | int';
+      case TypeKind.BOOLEAN:
+        return 'bool';
+      case TypeKind.VOID:
+        return 'None';
+      case TypeKind.ANY:
+        return 'Any';
+      case TypeKind.UNKNOWN:
+        return 'Any';
+      case TypeKind.NULL:
+      case TypeKind.UNDEFINED:
+        return 'None';
+      case TypeKind.ARRAY:
+        const elemType = this.generateTypeAnnotation((type as ArrayType).elementType);
+        return f`list[${elemType}]`;
+      case TypeKind.OBJECT:
+        return 'dict[str, Any]';
+      case TypeKind.FUNCTION:
+        return 'Callable';
+      case TypeKind.UNION:
+        const types = (type as UnionType).types.map(t => this.generateTypeAnnotation(t));
+        return types.join(' | ');
+      case TypeKind.TYPE_REF:
+        return (type as TypeReference).name;
+      case TypeKind.LITERAL:
+        const lit = (type as LiteralType).value;
+        if (typeof lit === 'string') return 'str';
+        if (typeof lit === 'number') return 'int';
+        if (typeof lit === 'boolean') return 'bool';
+        return 'Any';
+      default:
+        return 'Any';
+    }
+  }
+  
+  /**
+   * 获取缩进
+   */
+  private getIndent(): string {
+    return ' '.repeat(this.indent * this.options.indentSize!);
+  }
+  
+  /**
+   * 转换为snake_case
+   */
+  private toSnakeCase(name: string): string {
+    // 保留Python关键字检查
+    const pythonKeywords = ['class', 'def', 'if', 'else', 'elif', 'while', 'for', 'in', 'is', 'not', 'and', 'or', 'pass', 'return', 'import', 'from', 'as', 'try', 'except', 'finally', 'raise', 'with', 'async', 'await', 'lambda', 'yield', 'True', 'False', 'None'];
+    
+    // camelCase to snake_case
+    let result = name
+      .replace(/([A-Z])/g, '_$1')
+      .toLowerCase()
+      .replace(/^_/, '');
+    
+    // 如果结果是Python关键字，添加下划线后缀
+    if (pythonKeywords.includes(result)) {
+      result += '_';
+    }
+    
+    return result || name;
+  }
+}
+
+/**
+ * 生成入口函数
+ */
+export function generatePython(module: Module, options?: PythonGenOptions): string {
+  const generator = new IRToPythonGenerator(options);
+  return generator.generate(module);
+}
+
+// 默认导出
+export default {
+  IRToPythonGenerator,
+  generatePython,
+  NODE_TO_PYTHON_LIBS,
+  JS_TO_PYTHON_GLOBALS,
+};

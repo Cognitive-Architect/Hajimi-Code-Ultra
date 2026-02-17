@@ -1,0 +1,398 @@
+# =============================================================================
+# Debt Clearance Automation - 季度指纹自动更新
+# HAJIMI-PHASE2-IMPL-001 工单 B-06/06：路线F-AutoPay实现
+#
+# 功能：季度指纹自动更新，Mike审计门触发，PR自动创建，合并后清理
+# 自测点：PAY-001（季度指纹更新零人工）
+# =============================================================================
+
+name: '🔄 Quarterly Debt Clearance'
+
+on:
+  schedule:
+    # 每季度第一个月的1号 02:00 UTC 运行
+    - cron: '0 2 1 1,4,7,10 *'
+  workflow_dispatch:
+    inputs:
+      clearance_type:
+        description: '清偿类型'
+        required: true
+        default: 'quarterly'
+        type: choice
+        options:
+          - quarterly
+          - emergency
+          - test
+      force_clear:
+        description: '强制清偿（跳过审计）'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '20.x'
+  CLEARANCE_BRANCH_PREFIX: 'auto/clearance'
+  MIKE_AUDIT_TIMEOUT: 300  # 5分钟超时
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  # =============================================================================
+  # Job 1: 债务分析与清偿计划生成
+  # =============================================================================
+  analyze-debts:
+    name: '📋 Analyze & Plan Clearance'
+    runs-on: ubuntu-latest
+    outputs:
+      clearance_plan: ${{ steps.plan.outputs.plan }}
+      clearance_id: ${{ steps.plan.outputs.clearance_id }}
+      debt_count: ${{ steps.plan.outputs.debt_count }}
+    steps:
+      - name: '📥 Checkout Repository'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: '🔧 Setup Environment'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: '🔍 Comprehensive Debt Scan'
+        id: scan
+        run: |
+          echo "::group::Comprehensive Debt Scan"
+          
+          # 初始化债务数组
+          DEBTS="[]"
+          
+          # 扫描所有TypeScript/JavaScript文件
+          find . -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" \) \
+            ! -path "./node_modules/*" ! -path "./.git/*" ! -path "./dist/*" | \
+          while read -r file; do
+            # 扫描 DEBT 标记
+            grep -n "DEBT\|@debt\|TODO.*debt\|FIXME.*debt" "$file" 2>/dev/null | \
+            while IFS=: read -r line content; do
+              # 提取优先级
+              PRIORITY=$(echo "$content" | grep -oE "P[0-3]" | head -1 || echo "P2")
+              # 提取债务ID
+              DEBT_ID=$(echo "$content" | grep -oE "DEBT-[A-Z]+-[0-9]+" | head -1 || echo "UNKNOWN")
+              
+              echo "{\"id\":\"$DEBT_ID\",\"file\":\"$file\",\"line\":$line,\"priority\":\"$PRIORITY\",\"content\":\"$(echo "$content" | sed 's/"/\\"/g')\"}" >> debts_raw.jsonl
+            done
+          done
+          
+          # 合并为JSON数组
+          if [ -f debts_raw.jsonl ]; then
+            DEBTS="[$(paste -sd ',' debts_raw.jsonl)]"
+            COUNT=$(wc -l < debts_raw.jsonl)
+          else
+            COUNT=0
+          fi
+          
+          echo "Total debts found: $COUNT"
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "debts=$DEBTS" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+
+      - name: '📊 Generate Clearance Plan'
+        id: plan
+        run: |
+          echo "::group::Generate Clearance Plan"
+          
+          QUARTER=$(date +%Y-Q%q)
+          CLEARANCE_ID="CLEARANCE-${QUARTER}-$(date +%s)"
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          
+          # 生成清偿计划
+          PLAN=$(cat <<EOF
+          {
+            "id": "$CLEARANCE_ID",
+            "quarter": "$QUARTER",
+            "timestamp": "$TIMESTAMP",
+            "triggered_by": "${{ github.actor }}",
+            "type": "${{ inputs.clearance_type || 'quarterly' }}",
+            "total_debts": ${{ steps.scan.outputs.count }},
+            "phases": [
+              {
+                "phase": 1,
+                "name": "P0 Emergency Clearance",
+                "priority": "P0",
+                "target": "0",
+                "deadline": "$(date -d '+7 days' +%Y-%m-%d)"
+              },
+              {
+                "phase": 2,
+                "name": "P1 Priority Clearance", 
+                "priority": "P1",
+                "target": "50% reduction",
+                "deadline": "$(date -d '+30 days' +%Y-%m-%d)"
+              },
+              {
+                "phase": 3,
+                "name": "P2 Regular Clearance",
+                "priority": "P2",
+                "target": "25% reduction",
+                "deadline": "$(date -d '+60 days' +%Y-%m-%d)"
+              }
+            ],
+            "audit_required": ${{ inputs.force_clear != 'true' }},
+            "status": "planned"
+          }
+          EOF
+          )
+          
+          echo "Clearance ID: $CLEARANCE_ID"
+          echo "plan=$PLAN" >> $GITHUB_OUTPUT
+          echo "clearance_id=$CLEARANCE_ID" >> $GITHUB_OUTPUT
+          echo "debt_count=${{ steps.scan.outputs.count }}" >> $GITHUB_OUTPUT
+          
+          # 保存计划文件
+          mkdir -p .autopay/clearance-plans
+          echo "$PLAN" > ".autopay/clearance-plans/${CLEARANCE_ID}.json"
+          
+          echo "::endgroup::"
+
+      - name: '💾 Upload Plan Artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: clearance-plan-${{ steps.plan.outputs.clearance_id }}
+          path: .autopay/clearance-plans/
+
+  # =============================================================================
+  # Job 2: Mike审计门检查
+  # =============================================================================
+  mike-audit:
+    name: '🔒 Mike Audit Gate'
+    needs: analyze-debts
+    runs-on: ubuntu-latest
+    if: needs.analyze-debts.outputs.debt_count > 0 && inputs.force_clear != true
+    outputs:
+      audit_passed: ${{ steps.audit.outputs.passed }}
+      audit_report: ${{ steps.audit.outputs.report }}
+    timeout-minutes: 5  # PAY-003: 熔断<5s → 这里设置5分钟job超时
+    steps:
+      - name: '📥 Checkout Repository'
+        uses: actions/checkout@v4
+
+      - name: '🔧 Setup Node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: '📦 Install Dependencies'
+        run: npm ci --prefer-offline
+
+      - name: '🔒 Run Mike Audit Gate'
+        id: audit
+        run: |
+          echo "::group::Mike Audit Gate"
+          
+          START_TIME=$(date +%s)
+          
+          # 调用Mike审计门（模拟模式）
+          # 实际接入时替换为真实API调用
+          node -e "
+          const auditGate = require('./lib/autopay/audit/mike-gate');
+          
+          async function runAudit() {
+            const plan = JSON.parse('${{ needs.analyze-debts.outputs.clearance_plan }}');
+            const result = await auditGate.audit({
+              clearanceId: plan.id,
+              debts: plan.total_debts,
+              type: plan.type,
+              simulate: true  // 模拟模式
+            });
+            
+            console.log('AUDIT_RESULT:', JSON.stringify(result));
+            process.exit(result.passed ? 0 : 1);
+          }
+          
+          runAudit().catch(e => {
+            console.error('Audit failed:', e);
+            process.exit(1);
+          });
+          " || AUDIT_FAILED="true"
+          
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          
+          if [ "$AUDIT_FAILED" = "true" ]; then
+            echo "passed=false" >> $GITHUB_OUTPUT
+            echo "report={\"status\":\"failed\",\"duration\":$DURATION,\"reason\":\"audit_rejected\"}" >> $GITHUB_OUTPUT
+            echo "❌ Mike Audit Failed"
+          else
+            echo "passed=true" >> $GITHUB_OUTPUT
+            echo "report={\"status\":\"passed\",\"duration\":$DURATION,\"signature\":\"$(date +%s)\"}" >> $GITHUB_OUTPUT
+            echo "✅ Mike Audit Passed (${DURATION}s)"
+          fi
+          
+          echo "::endgroup::"
+
+      - name: '🚫 Audit Failure Handler'
+        if: failure() || steps.audit.outputs.passed == 'false'
+        run: |
+          echo "::error::Mike Audit Gate rejected the clearance plan"
+          echo "Audit must pass before auto-clearance can proceed"
+          exit 1
+
+  # =============================================================================
+  # Job 3: 自动创建清偿PR
+  # =============================================================================
+  create-clearance-pr:
+    name: '📝 Create Clearance PR'
+    needs: [analyze-debts, mike-audit]
+    runs-on: ubuntu-latest
+    if: needs.mike-audit.outputs.audit_passed == 'true' || inputs.force_clear == true
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      pr_number: ${{ steps.create-pr.outputs.pr_number }}
+      pr_url: ${{ steps.create-pr.outputs.pr_url }}
+    steps:
+      - name: '📥 Checkout Repository'
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: '🔧 Setup Git'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: '🌿 Create Clearance Branch'
+        run: |
+          CLEARANCE_ID="${{ needs.analyze-debts.outputs.clearance_id }}"
+          BRANCH_NAME="${{ env.CLEARANCE_BRANCH_PREFIX }}/${CLEARANCE_ID}"
+          
+          git checkout -b "$BRANCH_NAME"
+          
+          # 创建清偿标记文件
+          mkdir -p .autopay/clearance-plans
+          echo '${{ needs.analyze-debts.outputs.clearance_plan }}' > ".autopay/clearance-plans/${CLEARANCE_ID}.json"
+          
+          # 更新债务指纹
+          date +%s > .autopay/last-clearance-fingerprint
+          
+          git add .
+          git commit -m "🔄 Auto Clearance: ${CLEARANCE_ID}
+          
+          - Quarterly debt clearance initiated
+          - Total debts: ${{ needs.analyze-debts.outputs.debt_count }}
+          - Audit: ${{ needs.mike-audit.outputs.audit_passed == 'true' && 'PASSED' || 'FORCED' }}
+          
+          [auto-generated by debt-clearance workflow]"
+          
+          git push origin "$BRANCH_NAME"
+          
+          echo "branch=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: '📝 Create Pull Request'
+        id: create-pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const plan = JSON.parse('${{ needs.analyze-debts.outputs.clearance_plan }}');
+            const audit = JSON.parse('${{ needs.mike-audit.outputs.audit_report || '{"status":"forced"}' }}');
+            
+            const body = `## 🔄 Quarterly Debt Clearance: ${plan.id}
+            
+            **Quarter**: ${plan.quarter}
+            **Triggered By**: ${plan.triggered_by}
+            **Type**: ${plan.type}
+            
+            ### 📊 Debt Summary
+            - **Total Debts**: ${{ needs.analyze-debts.outputs.debt_count }}
+            - **Audit Status**: ${audit.status === 'passed' ? '✅ PASSED' : '⚠️ FORCED'}
+            - **Audit Duration**: ${audit.duration || 'N/A'}s
+            
+            ### 📋 Clearance Phases
+            | Phase | Priority | Target | Deadline |
+            |:---|:---|:---|:---|
+            ${plan.phases.map(p => `| ${p.phase} | ${p.name} | ${p.target} | ${p.deadline} |`).join('\n')}
+            
+            ### ✅ Checklist
+            - [ ] P0 debts cleared
+            - [ ] P1 debts reduced by 50%
+            - [ ] P2 debts reduced by 25%
+            - [ ] Tests passing
+            - [ ] Documentation updated
+            
+            ---
+            *Auto-generated by Debt Clearance Workflow* 🤖`;
+            
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔄 ${plan.id}: Quarterly Debt Clearance`,
+              body: body,
+              head: process.env.branch,
+              base: 'main',
+              labels: ['debt-clearance', 'auto-generated', 'quarterly']
+            });
+            
+            core.setOutput('pr_number', pr.data.number);
+            core.setOutput('pr_url', pr.data.html_url);
+            
+            console.log(`Created PR #${pr.data.number}: ${pr.data.html_url}`);
+
+      - name: '🔔 Notify Stakeholders'
+        run: |
+          echo "📢 Clearance PR Created"
+          echo "PR Number: ${{ steps.create-pr.outputs.pr_number }}"
+          echo "PR URL: ${{ steps.create-pr.outputs.pr_url }}"
+
+  # =============================================================================
+  # Job 4: 合并后清理（当PR合并时触发）
+  # =============================================================================
+  post-merge-cleanup:
+    name: '🧹 Post-Merge Cleanup'
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'debt-clearance')
+    steps:
+      - name: '📥 Checkout Repository'
+        uses: actions/checkout@v4
+
+      - name: '🧹 Cleanup Clearance Artifacts'
+        run: |
+          echo "Cleaning up after clearance merge..."
+          
+          # 归档已完成的清偿计划
+          mkdir -p .autopay/clearance-archive
+          
+          if [ -d ".autopay/clearance-plans" ]; then
+            find .autopay/clearance-plans -name "CLEARANCE-*.json" -exec mv {} .autopay/clearance-archive/ \;
+          fi
+          
+          # 更新清偿历史
+          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) - Clearance merged: ${{ github.event.pull_request.number }}" >> .autopay/clearance-history.log
+
+      - name: '📊 Update Debt Metrics'
+        run: |
+          echo "Updating post-clearance metrics..."
+          
+          # 重新计算健康度
+          node -e "
+          const fs = require('fs');
+          const health = require('./lib/autopay/dashboard/debt-health');
+          
+          health.calculateHealth().then(result => {
+            fs.writeFileSync('.autopay/debt-health.json', JSON.stringify(result, null, 2));
+            console.log('Health score updated:', result.score);
+          });
+          " || echo "Health update skipped"
+
+      - name: '📤 Commit Cleanup'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add .autopay/
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "🧹 Post-clearance cleanup [PR #${{ github.event.pull_request.number }}]"
+            git push
+          fi

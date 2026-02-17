@@ -1,0 +1,340 @@
+# =============================================================================
+# Debt Monitor GitHub Action
+# HAJIMI-PHASE2-IMPL-001 工单 B-06/06：路线F-AutoPay实现
+# 
+# 功能：每小时扫描债务健康度，触发告警，更新状态徽章
+# 自测点：PAY-001, PAY-002, PAY-003
+# =============================================================================
+
+name: '📊 Debt Health Monitor'
+
+on:
+  schedule:
+    # 每小时运行一次
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      alert_level:
+        description: '强制告警级别'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - info
+          - warning
+          - critical
+
+env:
+  NODE_VERSION: '20.x'
+  DEBT_THRESHOLD_P0: 0
+  DEBT_THRESHOLD_P1: 5
+  DEBT_THRESHOLD_P2: 10
+  ALERT_WEBHOOK: ${{ secrets.DEBT_ALERT_WEBHOOK }}
+
+jobs:
+  # =============================================================================
+  # Job 1: 债务扫描与健康度计算
+  # =============================================================================
+  scan-debts:
+    name: '🔍 Scan Code Debts'
+    runs-on: ubuntu-latest
+    outputs:
+      debt_report: ${{ steps.scan.outputs.report }}
+      health_score: ${{ steps.health.outputs.score }}
+      alert_triggered: ${{ steps.alert.outputs.triggered }}
+    steps:
+      - name: '📥 Checkout Repository'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: '🔧 Setup Node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: '📦 Install Dependencies'
+        run: npm ci --prefer-offline
+
+      - name: '🔍 Scan Debt Declarations'
+        id: scan
+        run: |
+          echo "::group::Debt Scan Results"
+          
+          # 扫描代码中的债务标记
+          P0_COUNT=$(grep -r "DEBT.*P0\|priority.*P0" --include="*.ts" --include="*.tsx" --include="*.js" . 2>/dev/null | wc -l || echo "0")
+          P1_COUNT=$(grep -r "DEBT.*P1\|priority.*P1" --include="*.ts" --include="*.tsx" --include="*.js" . 2>/dev/null | wc -l || echo "0")
+          P2_COUNT=$(grep -r "DEBT.*P2\|priority.*P2" --include="*.ts" --include="*.tsx" --include="*.js" . 2>/dev/null | wc -l || echo "0")
+          
+          # 扫描TODO/FIXME
+          TODO_COUNT=$(grep -r "TODO\|FIXME\|XXX\|HACK" --include="*.ts" --include="*.tsx" --include="*.js" . 2>/dev/null | wc -l || echo "0")
+          
+          TOTAL=$((P0_COUNT + P1_COUNT + P2_COUNT))
+          
+          echo "P0 Debts: $P0_COUNT"
+          echo "P1 Debts: $P1_COUNT"
+          echo "P2 Debts: $P2_COUNT"
+          echo "TODO/FIXME: $TODO_COUNT"
+          echo "Total: $TOTAL"
+          
+          # 生成JSON报告
+          REPORT=$(cat <<EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "debts": {
+              "p0": $P0_COUNT,
+              "p1": $P1_COUNT,
+              "p2": $P2_COUNT,
+              "total": $TOTAL
+            },
+            "todos": $TODO_COUNT,
+            "run_id": "${{ github.run_id }}"
+          }
+          EOF
+          )
+          
+          echo "report=$REPORT" >> $GITHUB_OUTPUT
+          echo "$REPORT" > debt-report.json
+          echo "::endgroup::"
+
+      - name: '📊 Calculate Health Score'
+        id: health
+        run: |
+          echo "::group::Health Score Calculation"
+          
+          P0=$(echo '${{ steps.scan.outputs.report }}' | jq -r '.debts.p0')
+          P1=$(echo '${{ steps.scan.outputs.report }}' | jq -r '.debts.p1')
+          P2=$(echo '${{ steps.scan.outputs.report }}' | jq -r '.debts.p2')
+          
+          # 健康度计算公式：100 - (P0*50 + P1*10 + P2*2)
+          SCORE=$((100 - P0 * 50 - P1 * 10 - P2 * 2))
+          if [ $SCORE -lt 0 ]; then SCORE=0; fi
+          if [ $SCORE -gt 100 ]; then SCORE=100; fi
+          
+          echo "Health Score: $SCORE/100"
+          echo "score=$SCORE" >> $GITHUB_OUTPUT
+          
+          # 确定健康状态
+          if [ $SCORE -ge 80 ]; then
+            STATUS="healthy"
+            COLOR="brightgreen"
+          elif [ $SCORE -ge 60 ]; then
+            STATUS="degraded"
+            COLOR="yellow"
+          elif [ $SCORE -ge 40 ]; then
+            STATUS="at-risk"
+            COLOR="orange"
+          else
+            STATUS="critical"
+            COLOR="red"
+          fi
+          
+          echo "Status: $STATUS"
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          echo "color=$COLOR" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+
+      - name: '🚨 Check Alert Conditions'
+        id: alert
+        run: |
+          echo "::group::Alert Conditions"
+          
+          P0=$(echo '${{ steps.scan.outputs.report }}' | jq -r '.debts.p0')
+          P1=$(echo '${{ steps.scan.outputs.report }}' | jq -r '.debts.p1')
+          SCORE=${{ steps.health.outputs.score }}
+          
+          TRIGGERED="false"
+          LEVEL="none"
+          
+          # 检查告警条件
+          if [ "$P0" -gt "$DEBT_THRESHOLD_P0" ]; then
+            TRIGGERED="true"
+            LEVEL="critical"
+          elif [ "$P1" -gt "$DEBT_THRESHOLD_P1" ]; then
+            TRIGGERED="true"
+            LEVEL="warning"
+          elif [ "$SCORE" -lt 40 ]; then
+            TRIGGERED="true"
+            LEVEL="warning"
+          fi
+          
+          # 强制告警级别
+          if [ "${{ inputs.alert_level }}" != "auto" ] && [ "${{ inputs.alert_level }}" != "" ]; then
+            TRIGGERED="true"
+            LEVEL="${{ inputs.alert_level }}"
+          fi
+          
+          echo "Alert Triggered: $TRIGGERED"
+          echo "Alert Level: $LEVEL"
+          echo "triggered=$TRIGGERED" >> $GITHUB_OUTPUT
+          echo "level=$LEVEL" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+
+      - name: '💾 Upload Scan Artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: debt-scan-${{ github.run_id }}
+          path: debt-report.json
+          retention-days: 30
+
+  # =============================================================================
+  # Job 2: 更新状态徽章
+  # =============================================================================
+  update-badge:
+    name: '🏷️ Update Status Badge'
+    needs: scan-debts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: '📥 Checkout Repository'
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: '🎨 Generate Badge'
+        run: |
+          SCORE=${{ needs.scan-debts.outputs.health_score }}
+          
+          # 确定颜色和状态
+          if [ $SCORE -ge 80 ]; then
+            COLOR="brightgreen"
+            STATUS="Healthy"
+          elif [ $SCORE -ge 60 ]; then
+            COLOR="yellow"
+            STATUS="Degraded"
+          elif [ $SCORE -ge 40 ]; then
+            COLOR="orange"
+            STATUS="At-Risk"
+          else
+            COLOR="red"
+            STATUS="Critical"
+          fi
+          
+          # 更新徽章Markdown
+          mkdir -p .github/badges
+          curl -s "https://img.shields.io/badge/Debt%20Health-$SCORE%2F100-$COLOR" > .github/badges/debt-health.svg
+          
+          echo "Badge updated: $STATUS ($SCORE/100)"
+
+      - name: '📤 Commit Badge Update'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add .github/badges/debt-health.svg
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📊 Auto-update debt health badge [score: ${{ needs.scan-debts.outputs.health_score }}/100]"
+            git push
+          fi
+
+  # =============================================================================
+  # Job 3: 发送告警通知
+  # =============================================================================
+  send-alert:
+    name: '📢 Send Alert Notification'
+    needs: scan-debts
+    runs-on: ubuntu-latest
+    if: needs.scan-debts.outputs.alert_triggered == 'true'
+    steps:
+      - name: '📤 Send Webhook Alert'
+        if: env.ALERT_WEBHOOK != ''
+        run: |
+          ALERT_DATA=$(cat <<EOF
+          {
+            "type": "debt_alert",
+            "level": "${{ needs.scan-debts.outputs.alert_level }}",
+            "repository": "${{ github.repository }}",
+            "run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "health_score": ${{ needs.scan-debts.outputs.health_score }},
+            "report": ${{ needs.scan-debts.outputs.debt_report }},
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          )
+          
+          curl -X POST "$ALERT_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "$ALERT_DATA" || echo "Webhook failed"
+
+      - name: '📝 Create Issue Alert'
+        if: needs.scan-debts.outputs.alert_level == 'critical'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const report = JSON.parse('${{ needs.scan-debts.outputs.debt_report }}');
+            const score = ${{ needs.scan-debts.outputs.health_score }};
+            
+            const issueBody = `## 🚨 Debt Health Alert
+            
+            **Alert Level**: Critical
+            **Health Score**: ${score}/100
+            **Triggered At**: ${{ github.event.repository.updated_at }}
+            
+            ### Current Debt Status
+            | Priority | Count |
+            |:---|:---:|
+            | P0 (Blocking) | ${report.debts.p0} |
+            | P1 (High) | ${report.debts.p1} |
+            | P2 (Medium) | ${report.debts.p2} |
+            | **Total** | ${report.debts.total} |
+            
+            ### Action Required
+            - [ ] Review P0 debts immediately
+            - [ ] Create clearance plan
+            - [ ] Assign owners
+            
+            [View Details](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Debt Health Alert: ${score}/100`,
+              body: issueBody,
+              labels: ['debt', 'alert', 'auto-generated']
+            });
+
+  # =============================================================================
+  # Job 4: 历史数据归档
+  # =============================================================================
+  archive-metrics:
+    name: '📦 Archive Metrics'
+    needs: scan-debts
+    runs-on: ubuntu-latest
+    steps:
+      - name: '📥 Checkout Repository'
+        uses: actions/checkout@v4
+
+      - name: '📊 Archive to History'
+        run: |
+          mkdir -p docs/debt-history
+          
+          REPORT='${{ needs.scan-debts.outputs.debt_report }}'
+          TIMESTAMP=$(date -u +%Y%m%d-%H%M%S)
+          
+          echo "$REPORT" > "docs/debt-history/${TIMESTAMP}.json"
+          
+          # 保留最近90天的记录
+          find docs/debt-history -name "*.json" -mtime +90 -delete 2>/dev/null || true
+          
+          echo "Archived: ${TIMESTAMP}.json"
+
+      - name: '📤 Commit Archive'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add docs/debt-history/
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📦 Archive debt metrics [run: ${{ github.run_id }}]"
+            git push
+          fi
