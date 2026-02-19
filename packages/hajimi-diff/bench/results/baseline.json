@@ -5,7 +5,7 @@
   ],
   "version": "v0.9.1",
   "preset": "quick",
-  "generated_at_utc": "2026-02-19T01:18:55.144Z",
+  "generated_at_utc": "2026-02-19T05:39:02.666Z",
   "tools": [
     "zstd",
     "xdelta3",
@@ -13,22 +13,22 @@
     "hajimi"
   ],
   "env": {
-    "node": "v22.16.0",
-    "platform": "linux",
+    "node": "v24.11.1",
+    "platform": "win32",
     "arch": "x64",
-    "cpus": 56,
+    "cpus": 16,
     "tool_presence": {
       "zstd": {
         "present": false,
-        "version": null
+        "version": "*** Zstandard CLI (64-bit) v1.5.6, by Yann Collet ***"
       },
       "xdelta3": {
         "present": false,
         "version": null
       },
       "git": {
-        "present": true,
-        "version": "git version 2.39.5"
+        "present": false,
+        "version": "git version 2.44.0.windows.1"
       }
     }
   },
@@ -50,10 +50,8 @@
           "reason": "missing_cli:xdelta3"
         },
         "git": {
-          "status": "ok",
-          "delta_bytes": 1741,
-          "ms": 75.0281360000372,
-          "ratio": 0.10940052783712455
+          "status": "skipped",
+          "reason": "missing_cli:git"
         },
         "hajimi": {
           "status": "not_implemented"
@@ -77,10 +75,8 @@
           "reason": "missing_cli:xdelta3"
         },
         "git": {
-          "status": "ok",
-          "delta_bytes": 803867,
-          "ms": 101.07496999995783,
-          "ratio": 2.025843863248036
+          "status": "skipped",
+          "reason": "missing_cli:git"
         },
         "hajimi": {
           "status": "not_implemented"
@@ -104,10 +100,8 @@
           "reason": "missing_cli:xdelta3"
         },
         "git": {
-          "status": "ok",
-          "delta_bytes": 169262,
-          "ms": 78.32249299995601,
-          "ratio": 2.5824179177346513
+          "status": "skipped",
+          "reason": "missing_cli:git"
         },
         "hajimi": {
           "status": "not_implemented"
@@ -131,10 +125,8 @@
           "reason": "missing_cli:xdelta3"
         },
         "git": {
-          "status": "ok",
-          "delta_bytes": 4641,
-          "ms": 204.89809100003913,
-          "ratio": 0.004426002502441406
+          "status": "skipped",
+          "reason": "missing_cli:git"
         },
         "hajimi": {
           "status": "not_implemented"

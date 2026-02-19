@@ -1,0 +1,20 @@
+{
+  "version": "0.9.1",
+  "file_size": 161,
+  "hash_algo": "blake3-256",
+  "file_sha256": "e9f7b1a9b42cd0f1128759ab480a0cb031aca387d1c7ce4ab717fcd059040460",
+  "file_blake3_256_hex": "059b9eace6ad4c6dd43faa61db89d0b5be0e23f8c0f902e6c51b1c5cfa796e13",
+  "index_xxh64_hex": "45a6278e1392814a",
+  "chunk_xxh64_hex": "c5be435b538f10d9",
+  "layout": {
+    "header_len": 64,
+    "index_entry_len": 26,
+    "footer_len": 48,
+    "index_count": 1,
+    "index_offset": 64,
+    "index_length": 26,
+    "data_offset": 90,
+    "data_length": 23,
+    "footer_offset": 113
+  }
+}

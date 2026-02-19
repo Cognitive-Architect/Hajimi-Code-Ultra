@@ -1,0 +1,23 @@
+{
+  "results": [
+    {
+      "adapter": "hajimi-diff",
+      "dataset": "ai-chat",
+      "testCase": "default",
+      "compressionRatio": -0.5563816604708798,
+      "speedMbps": 0.1922547958681636,
+      "peakMemoryMb": -0.050140380859375,
+      "correctness": true,
+      "durationMs": 4.003099999999989
+    }
+  ],
+  "leaderboard": [
+    {
+      "rank": 1,
+      "adapter": "hajimi-diff",
+      "avgCompressionRatio": -0.5563816604708798,
+      "avgSpeedMbps": 0.1922547958681636,
+      "totalScore": -0.3330599770990552
+    }
+  ]
+}

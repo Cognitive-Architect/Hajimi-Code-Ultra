@@ -3,10 +3,7 @@
   "version": "0.9.1-rc",
   "description": "Hajimi Code Ultra - Monorepo",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "apps/*"
-  ],
+  "workspaces": [],
   "scripts": {
     "build": "echo 'Build all packages'",
     "test": "npm run test --workspace=@hajimi/diff",
