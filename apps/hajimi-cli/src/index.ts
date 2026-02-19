@@ -4,6 +4,10 @@
  * 
  * DEBT-CLI-001: 仅支持文件，不支持目录递归（P1）
  * DEBT-CLI-002: CDC + zstd 完整实现待补充（当前为原型）
+ * DEBT-CLI-003: 文件大小限制100MB，v1.1改用stream（P0）
+ *   - 防止大文件导致OOM
+ *   - 当前限制：100MB
+ *   - 未来：改用streaming支持>1GB
  */
 
 import { Command } from 'commander';
@@ -12,6 +16,19 @@ import * as path from 'path';
 import { blake3_256 } from '@hajimi/diff';
 
 const program = new Command();
+
+// OOM Guard: 文件大小限制 (100MB)
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+
+function checkFileSize(filePath: string): void {
+  const stats = fs.statSync(filePath);
+  if (stats.size > MAX_FILE_SIZE) {
+    console.error(`[ERROR] File >100MB not supported in v1.0-alpha (DEBT-CLI-003). Use streaming in v1.1.`);
+    console.error(`[ERROR] File: ${filePath}`);
+    console.error(`[ERROR] Size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+    process.exit(1);
+  }
+}
 
 program
   .name('hajimi')
@@ -37,6 +54,10 @@ program
         console.error(`[ERROR] New file not found: ${newFile}`);
         process.exit(1);
       }
+
+      // 检查文件大小
+      checkFileSize(oldFile);
+      checkFileSize(newFile);
 
       const oldData = fs.readFileSync(oldFile);
       const newData = fs.readFileSync(newFile);
@@ -101,6 +122,10 @@ program
         process.exit(1);
       }
 
+      // 检查文件大小
+      checkFileSize(patchFile);
+      checkFileSize(baseFile);
+
       const patchData = fs.readFileSync(patchFile);
       const baseData = fs.readFileSync(baseFile);
 
@@ -144,7 +169,7 @@ program
 
       console.log(`[OK] Applied patch: ${options.output}`);
       console.log(`[INFO] Output size: ${outputData.length} bytes`);
-      console.log(`[OK] SHA256 verification passed`);
+      console.log(`[OK] BLAKE3-256 verification passed`);
 
     } catch (err) {
       console.error('[ERROR]', err instanceof Error ? err.message : String(err));
@@ -162,6 +187,7 @@ program
       console.error(`[ERROR] File not found: ${file}`);
       process.exit(1);
     }
+    checkFileSize(file);
     const data = fs.readFileSync(file);
     const hash = Buffer.from(blake3_256(data)).toString('hex');
     console.log(`${hash}  ${file}`);

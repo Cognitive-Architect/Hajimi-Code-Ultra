@@ -14,7 +14,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@hajimi/diff": "file:../../packages/hajimi-diff"
+    "@hajimi/diff": "file:../../packages/hajimi-diff",
+    "commander": "^11.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

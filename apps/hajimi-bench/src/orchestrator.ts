@@ -5,12 +5,29 @@
  * 
  * DEBT-BENCH-001: 仅支持内存测试，流式 >1GB 未实现（P1）
  * DEBT-BENCH-002: 当前仅支持单线程，多线程优化待实现（P2）
+ * DEBT-BENCH-003: 文件大小限制100MB，v1.1改用stream（P0）
+ *   - 防止大文件导致OOM
+ *   - 当前限制：100MB
+ *   - 未来：改用streaming支持>1GB
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { performance } from 'perf_hooks';
 import { blake3_256 } from '@hajimi/diff';
+
+// OOM Guard: 文件大小限制 (100MB)
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+
+function checkFileSize(filePath: string): void {
+  const stats = fs.statSync(filePath);
+  if (stats.size > MAX_FILE_SIZE) {
+    console.error(`[ERROR] File >100MB not supported in v1.0-alpha (DEBT-BENCH-003). Use streaming in v1.1.`);
+    console.error(`[ERROR] File: ${filePath}`);
+    console.error(`[ERROR] Size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+    throw new Error(`File too large: ${filePath}`);
+  }
+}
 
 export interface Adapter {
   name: string;
@@ -26,7 +43,7 @@ export interface BenchmarkResult {
   compressionRatio: number;  // 0-1, higher is better
   speedMbps: number;         // MB/s
   peakMemoryMb: number;      // Peak memory usage in MB
-  correctness: boolean;      // SHA256 must match
+  correctness: boolean;      // BLAKE3-256 must match
   durationMs: number;        // Total duration
 }
 
@@ -71,6 +88,9 @@ export class BenchmarkOrchestrator {
         const targetFile = path.join(caseDir, 'target.txt');
         
         if (fs.existsSync(baseFile) && fs.existsSync(targetFile)) {
+          // OOM Guard: 检查文件大小
+          checkFileSize(baseFile);
+          checkFileSize(targetFile);
           cases.push({
             name: entry.name,
             base: fs.readFileSync(baseFile),
@@ -85,6 +105,9 @@ export class BenchmarkOrchestrator {
       const baseFile = path.join(datasetDir, 'base.txt');
       const targetFile = path.join(datasetDir, 'target.txt');
       if (fs.existsSync(baseFile) && fs.existsSync(targetFile)) {
+        // OOM Guard: 检查文件大小
+        checkFileSize(baseFile);
+        checkFileSize(targetFile);
         cases.push({
           name: 'default',
           base: fs.readFileSync(baseFile),
