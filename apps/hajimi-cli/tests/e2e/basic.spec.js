@@ -146,4 +146,30 @@ test('CLI-FUNC-004: hash command computes BLAKE3 hash', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+// Test 100MB limit (DEBT-CLI-003)
+test('CLI-OOM-001: reject files larger than 100MB', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hajimi-cli-test-'));
+  const bigFile = path.join(tmpDir, 'big.bin');
+  const smallFile = path.join(tmpDir, 'small.txt');
+  
+  // Create a small file
+  fs.writeFileSync(smallFile, 'small content');
+  
+  // Create a file slightly larger than 100MB (100MB + 1 byte)
+  const fd = fs.openSync(bigFile, 'w');
+  fs.writeSync(fd, Buffer.alloc(1), 0, 1, 100 * 1024 * 1024);
+  fs.closeSync(fd);
+  
+  // Try to diff the big file
+  const r = runCli(['diff', bigFile, smallFile, '-o', path.join(tmpDir, 'test.hdiff')]);
+  
+  // Should fail with exit code 1 and mention DEBT-CLI-003
+  assert.notStrictEqual(r.status, 0, 'should return non-zero exit code for >100MB file');
+  assert.ok(r.stderr.includes('DEBT-CLI-003') || r.stdout.includes('DEBT-CLI-003'), 
+    'error message should mention DEBT-CLI-003');
+  
+  // Cleanup
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 console.log('[INFO] CLI E2E Tests loaded. Run with: node --test tests/e2e/basic.spec.js');

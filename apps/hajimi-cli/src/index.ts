@@ -21,6 +21,12 @@ const program = new Command();
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
 function checkFileSize(filePath: string): void {
+  // 先检查存在性
+  if (!fs.existsSync(filePath)) {
+    console.error(`[ERROR] File not found: ${filePath}`);
+    process.exit(1);
+  }
+  // 再检查大小
   const stats = fs.statSync(filePath);
   if (stats.size > MAX_FILE_SIZE) {
     console.error(`[ERROR] File >100MB not supported in v1.0-alpha (DEBT-CLI-003). Use streaming in v1.1.`);

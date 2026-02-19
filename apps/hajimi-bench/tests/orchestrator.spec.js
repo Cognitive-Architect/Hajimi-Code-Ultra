@@ -132,4 +132,35 @@ test('BENCH-FUNC-005: Report generation produces markdown', async () => {
   assert.ok(report.includes('```json'), 'report should have JSON output section');
 });
 
+// Test 100MB limit (DEBT-BENCH-003)
+test('BENCH-OOM-001: reject files larger than 100MB', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hajimi-bench-test-'));
+  const datasetDir = path.join(tmpDir, 'big-dataset');
+  fs.mkdirSync(datasetDir, { recursive: true });
+  
+  // Create a file slightly larger than 100MB (100MB + 1 byte)
+  const bigFile = path.join(datasetDir, 'base.txt');
+  const fd = fs.openSync(bigFile, 'w');
+  fs.writeSync(fd, Buffer.alloc(1), 0, 1, 100 * 1024 * 1024);
+  fs.closeSync(fd);
+  
+  // Create a small target file
+  fs.writeFileSync(path.join(datasetDir, 'target.txt'), 'target content');
+  
+  const orchestrator = new BenchmarkOrchestrator(tmpDir);
+  
+  // Try to load the dataset with big file
+  try {
+    await orchestrator.loadDataset('big-dataset');
+    assert.fail('should throw error for >100MB file');
+  } catch (err) {
+    // Error message should mention file too large
+    assert.ok(err.message.includes('too large') || err.message.includes('100MB') || err.message.includes('DEBT-BENCH-003'), 
+      'error should mention file too large');
+  }
+  
+  // Cleanup
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 console.log('[INFO] Benchmark tests loaded. Run with: node --test tests/orchestrator.spec.js');

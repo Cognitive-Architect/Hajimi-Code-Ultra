@@ -20,6 +20,12 @@ import { blake3_256 } from '@hajimi/diff';
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
 function checkFileSize(filePath: string): void {
+  // 先检查存在性
+  if (!fs.existsSync(filePath)) {
+    console.error(`[ERROR] File not found: ${filePath}`);
+    throw new Error(`File not found: ${filePath}`);
+  }
+  // 再检查大小
   const stats = fs.statSync(filePath);
   if (stats.size > MAX_FILE_SIZE) {
     console.error(`[ERROR] File >100MB not supported in v1.0-alpha (DEBT-BENCH-003). Use streaming in v1.1.`);
@@ -161,7 +167,7 @@ export class BenchmarkOrchestrator {
       const memAfter = process.memoryUsage();
       const peakMemoryMb = (memAfter.heapUsed - memBefore.heapUsed) / 1024 / 1024;
 
-      // Verify correctness (SHA256 must match)
+      // Verify correctness (BLAKE3-256 must match)
       const targetHash = Buffer.from(blake3_256(testCase.target)).toString('hex');
       const outputHash = Buffer.from(blake3_256(output)).toString('hex');
       const correctness = targetHash === outputHash;
