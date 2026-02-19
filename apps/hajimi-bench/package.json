@@ -1,0 +1,12 @@
+{
+  "name": "@hajimi/bench",
+  "version": "1.0.0-placeholder",
+  "description": "Hajimi Benchmark suite (v1.0 placeholder)",
+  "main": "index.js",
+  "scripts": {
+    "start": "echo 'Bench v1.0 placeholder - not yet implemented'"
+  },
+  "dependencies": {
+    "@hajimi/diff": "workspace:*"
+  }
+}

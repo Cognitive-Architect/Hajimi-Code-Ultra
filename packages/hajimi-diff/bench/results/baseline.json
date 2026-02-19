@@ -1,0 +1,145 @@
+{
+  "_debt": [
+    "DEBT-B05-001: depends on system CLIs (zstd/xdelta3/git); missing tools are skipped.",
+    "DEBT-B05-002: quick preset is offline sample; numbers are for framework validation only."
+  ],
+  "version": "v0.9.1",
+  "preset": "quick",
+  "generated_at_utc": "2026-02-19T01:18:55.144Z",
+  "tools": [
+    "zstd",
+    "xdelta3",
+    "git",
+    "hajimi"
+  ],
+  "env": {
+    "node": "v22.16.0",
+    "platform": "linux",
+    "arch": "x64",
+    "cpus": 56,
+    "tool_presence": {
+      "zstd": {
+        "present": false,
+        "version": null
+      },
+      "xdelta3": {
+        "present": false,
+        "version": null
+      },
+      "git": {
+        "present": true,
+        "version": "git version 2.39.5"
+      }
+    }
+  },
+  "pairs": [
+    {
+      "id": "code-01",
+      "kind": "code",
+      "base": "bench/corpus/code/code_base.txt",
+      "target": "bench/corpus/code/code_target.txt",
+      "base_bytes": 15892,
+      "target_bytes": 15914,
+      "metrics": {
+        "zstd": {
+          "status": "skipped",
+          "reason": "missing_cli:zstd"
+        },
+        "xdelta3": {
+          "status": "skipped",
+          "reason": "missing_cli:xdelta3"
+        },
+        "git": {
+          "status": "ok",
+          "delta_bytes": 1741,
+          "ms": 75.0281360000372,
+          "ratio": 0.10940052783712455
+        },
+        "hajimi": {
+          "status": "not_implemented"
+        }
+      }
+    },
+    {
+      "id": "ts-01",
+      "kind": "timeseries",
+      "base": "bench/corpus/timeseries/ts_base.jsonl",
+      "target": "bench/corpus/timeseries/ts_target.jsonl",
+      "base_bytes": 396738,
+      "target_bytes": 396806,
+      "metrics": {
+        "zstd": {
+          "status": "skipped",
+          "reason": "missing_cli:zstd"
+        },
+        "xdelta3": {
+          "status": "skipped",
+          "reason": "missing_cli:xdelta3"
+        },
+        "git": {
+          "status": "ok",
+          "delta_bytes": 803867,
+          "ms": 101.07496999995783,
+          "ratio": 2.025843863248036
+        },
+        "hajimi": {
+          "status": "not_implemented"
+        }
+      }
+    },
+    {
+      "id": "img-01",
+      "kind": "image_encrypted",
+      "base": "bench/corpus/image_encrypted/kodim01.png",
+      "target": "bench/corpus/image_encrypted/kodim01.enc.bin",
+      "base_bytes": 65544,
+      "target_bytes": 65544,
+      "metrics": {
+        "zstd": {
+          "status": "skipped",
+          "reason": "missing_cli:zstd"
+        },
+        "xdelta3": {
+          "status": "skipped",
+          "reason": "missing_cli:xdelta3"
+        },
+        "git": {
+          "status": "ok",
+          "delta_bytes": 169262,
+          "ms": 78.32249299995601,
+          "ratio": 2.5824179177346513
+        },
+        "hajimi": {
+          "status": "not_implemented"
+        }
+      }
+    },
+    {
+      "id": "syn-01",
+      "kind": "synthetic",
+      "base": "bench/corpus/synthetic/synth_base.bin",
+      "target": "bench/corpus/synthetic/synth_target.bin",
+      "base_bytes": 1048576,
+      "target_bytes": 1048576,
+      "metrics": {
+        "zstd": {
+          "status": "skipped",
+          "reason": "missing_cli:zstd"
+        },
+        "xdelta3": {
+          "status": "skipped",
+          "reason": "missing_cli:xdelta3"
+        },
+        "git": {
+          "status": "ok",
+          "delta_bytes": 4641,
+          "ms": 204.89809100003913,
+          "ratio": 0.004426002502441406
+        },
+        "hajimi": {
+          "status": "not_implemented"
+        }
+      }
+    }
+  ]
+}

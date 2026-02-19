@@ -14,3 +14,24 @@ test-result.json
 coverage/
 .nyc_output/
 
+# Temp extract directory
+context_research/temp_extract/
+*.zip
+
+# Logs
+*.log
+_tmp_*.log
+_suite.err
+_suite.out
+_npm_corrupt.log
+
+# Node modules
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

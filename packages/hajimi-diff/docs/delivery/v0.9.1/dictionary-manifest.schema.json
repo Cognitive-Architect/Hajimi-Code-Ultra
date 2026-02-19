@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Hajimi Dictionary Manifest v0.9.1",
+  "type": "object",
+  "required": ["version", "manifest_format", "dictionaries"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string", "const": "0.9.1" },
+    "manifest_format": { "type": "string", "const": "hajimi-dict-v1" },
+    "dictionaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["dict_id", "name", "format", "sha256", "size_bytes", "compatible_versions", "distribution_path"],
+        "additionalProperties": false,
+        "properties": {
+          "dict_id": { "type": "integer", "minimum": 0, "maximum": 4095 },
+          "name": { "type": "string", "minLength": 1 },
+          "format": { "type": "string", "enum": ["zstd"] },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "size_bytes": { "type": "integer", "minimum": 0 },
+          "compatible_versions": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+          "distribution_path": { "type": "string", "minLength": 1 },
+          "source_corpus": { "type": "string" },
+          "training_date": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+        }
+      }
+    }
+  }
+}

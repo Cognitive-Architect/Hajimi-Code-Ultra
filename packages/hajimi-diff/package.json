@@ -1,0 +1,32 @@
+{
+  "name": "@hajimi/diff",
+  "version": "0.9.1-rc",
+  "description": "Context-aware diff compression for AI",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "jest",
+    "type-check": "tsc --noEmit",
+    "verify:blake3": "node scripts/verify-blake3-test-vectors.js",
+    "verify:integrity": "node scripts/verify-integrity.js",
+    "verify:traceability": "node scripts/verify-traceability.js",
+    "benchmark": "node scripts/run-benchmark.js",
+    "corruption:test": "node scripts/run-corruption-suite.js"
+  },
+  "keywords": [
+    "diff",
+    "compression",
+    "blake3",
+    "cdc",
+    "zstd",
+    "ai-context"
+  ],
+  "author": "Hajimi Team",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
