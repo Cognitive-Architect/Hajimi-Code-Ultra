@@ -1,0 +1,104 @@
+{
+  "_debt": [
+    "DEBT-B05-001: depends on system CLIs (zstd/xdelta3/git) for benchmarks; missing tools are skipped.",
+    "DEBT-B05-002: full corpora are large; quick preset is offline sample only."
+  ],
+  "version": "v0.9.1",
+  "preset": "quick",
+  "generated_at_utc": "2026-02-18T20:49:40.617Z",
+  "seed": 1337,
+  "datasets": [
+    {
+      "id": "code",
+      "kind": "code",
+      "source": {
+        "preset": "quick",
+        "note": "repo snapshot (offline quick)"
+      },
+      "pairs": [
+        {
+          "id": "code-01",
+          "base": {
+            "path": "bench/corpus/code/code_base.txt",
+            "bytes": 15892,
+            "sha256": "ea15638992fa9c12ebc8fd7db8454cd6d43a9e445ff22b0338d67d0eca11a4be"
+          },
+          "target": {
+            "path": "bench/corpus/code/code_target.txt",
+            "bytes": 15914,
+            "sha256": "3fdcaae7064f728eebd89395ccbe86ba775ac307ce0bfedab3e1b2bbb172899e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "timeseries",
+      "kind": "timeseries",
+      "source": {
+        "preset": "quick",
+        "note": "synthetic JSONL events (offline quick)"
+      },
+      "pairs": [
+        {
+          "id": "ts-01",
+          "base": {
+            "path": "bench/corpus/timeseries/ts_base.jsonl",
+            "bytes": 396738,
+            "sha256": "a517fcb4504a866df3bad74989568d3d4a25c59df0de1d6b815c6a81d2520841"
+          },
+          "target": {
+            "path": "bench/corpus/timeseries/ts_target.jsonl",
+            "bytes": 396806,
+            "sha256": "4d71fb03efac3a99e4765a6abafc64cae7c2db4fef0b74077849aadddb483c82"
+          }
+        }
+      ]
+    },
+    {
+      "id": "image_encrypted",
+      "kind": "image_encrypted",
+      "source": {
+        "preset": "quick",
+        "note": "PNG-ish synthetic + XOR encryption (offline quick)"
+      },
+      "pairs": [
+        {
+          "id": "img-01",
+          "base": {
+            "path": "bench/corpus/image_encrypted/kodim01.png",
+            "bytes": 65544,
+            "sha256": "5ec6a42db5368ed60612a3ea03156addb47c00c220ae544f1f8bb626b5e69461"
+          },
+          "target": {
+            "path": "bench/corpus/image_encrypted/kodim01.enc.bin",
+            "bytes": 65544,
+            "sha256": "737e06712b9981b6d2957caf5598c4b11d0a6616282163c6771be9cd5b786041"
+          }
+        }
+      ]
+    },
+    {
+      "id": "synthetic",
+      "kind": "synthetic",
+      "source": {
+        "preset": "quick",
+        "note": "deterministic generator"
+      },
+      "pairs": [
+        {
+          "id": "syn-01",
+          "base": {
+            "path": "bench/corpus/synthetic/synth_base.bin",
+            "bytes": 1048576,
+            "sha256": "bdcbbd874bc3488f745f85c872f78a2010005abf7e9fd6dda593c6847db2ab2e"
+          },
+          "target": {
+            "path": "bench/corpus/synthetic/synth_target.bin",
+            "bytes": 1048576,
+            "sha256": "fb9fb8b743187e5f8c1570a04bbb7792cd276d7af17426e0a6a3a41b6a33d115"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HAJIMI baseline metrics",
+  "type": "object",
+  "required": ["version", "preset", "generated_at_utc", "tools", "pairs"],
+  "properties": {
+    "_debt": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "version": { "type": "string" },
+    "preset": { "type": "string" },
+    "generated_at_utc": { "type": "string" },
+    "tools": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "env": { "type": "object" },
+    "pairs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/pair" }
+    }
+  },
+  "$defs": {
+    "toolMetric": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "type": "string", "enum": ["ok", "skipped", "error", "not_implemented"] },
+        "reason": { "type": "string" },
+        "compressed_bytes": { "type": "integer", "minimum": 0 },
+        "delta_bytes": { "type": "integer", "minimum": 0 },
+        "ratio": { "type": ["number", "null"] },
+        "ms": { "type": ["number", "null"] },
+        "stderr": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "pair": {
+      "type": "object",
+      "required": ["id", "kind", "base", "target", "base_bytes", "target_bytes", "metrics"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string" },
+        "base": { "type": "string" },
+        "target": { "type": "string" },
+        "base_bytes": { "type": "integer", "minimum": 0 },
+        "target_bytes": { "type": "integer", "minimum": 0 },
+        "metrics": {
+          "type": "object",
+          "properties": {
+            "zstd": { "$ref": "#/$defs/toolMetric" },
+            "xdelta3": { "$ref": "#/$defs/toolMetric" },
+            "git": { "$ref": "#/$defs/toolMetric" },
+            "hajimi": { "$ref": "#/$defs/toolMetric" }
+          },
+          "required": ["zstd", "xdelta3", "git", "hajimi"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}
