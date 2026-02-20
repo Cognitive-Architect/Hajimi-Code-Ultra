@@ -1,13 +1,10 @@
 #!/usr/bin/env node
 /**
- * Hajimi CLI v1.0.0-alpha
+ * Hajimi CLI v1.1.0
  * 
- * DEBT-CLI-001: 仅支持文件，不支持目录递归（P1）
- * DEBT-CLI-002: CDC + zstd 完整实现待补充（当前为原型）
- * DEBT-CLI-003: 文件大小限制100MB，v1.1改用stream（P0）
- *   - 防止大文件导致OOM
- *   - 当前限制：100MB
- *   - 未来：改用streaming支持>1GB
+ * DEBT-CLI-001【已清偿 v1.1-FIXED】: 目录递归支持 (diff-dir 命令)
+ * DEBT-CLI-002: CDC + zstd 完整实现待补充（P1）
+ * DEBT-CLI-003【已清偿 v1.1-FIXED】: Stream 流式处理支持 (>1GB 文件)
  */
 
 import { Command } from 'commander';
@@ -17,22 +14,23 @@ import { blake3_256 } from '@hajimi/diff';
 
 const program = new Command();
 
-// OOM Guard: 文件大小限制 (100MB)
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+// 导入新命令
+import { registerDiffDirectoryCommand, diffDirectory } from './commands/diff-directory';
+import { registerDiffStreamCommand, diffStream } from './commands/diff-stream';
 
-function checkFileSize(filePath: string): void {
+// OOM Guard: 文件大小软限制 (100MB，超过则建议使用 stream)
+const STREAM_THRESHOLD = 100 * 1024 * 1024; // 100MB
+
+function checkFileSize(filePath: string, allowLarge: boolean = false): void {
   // 先检查存在性
   if (!fs.existsSync(filePath)) {
     console.error(`[ERROR] File not found: ${filePath}`);
     process.exit(1);
   }
-  // 再检查大小
+  // 检查大小，超过阈值时建议使用 stream
   const stats = fs.statSync(filePath);
-  if (stats.size > MAX_FILE_SIZE) {
-    console.error(`[ERROR] File >100MB not supported in v1.0-alpha (DEBT-CLI-003). Use streaming in v1.1.`);
-    console.error(`[ERROR] File: ${filePath}`);
-    console.error(`[ERROR] Size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
-    process.exit(1);
+  if (stats.size > STREAM_THRESHOLD && !allowLarge) {
+    console.warn(`[WARN] File >100MB detected. Consider using 'diff-stream' command for better performance.`);
   }
 }
 
@@ -61,9 +59,47 @@ program
         process.exit(1);
       }
 
-      // 检查文件大小
-      checkFileSize(oldFile);
-      checkFileSize(newFile);
+      // 检测是否为目录
+      const oldStat = fs.statSync(oldFile);
+      const newStat = fs.statSync(newFile);
+      
+      if (oldStat.isDirectory() || newStat.isDirectory()) {
+        if (!oldStat.isDirectory() || !newStat.isDirectory()) {
+          console.error(`[ERROR] Cannot compare file with directory`);
+          process.exit(1);
+        }
+        // 自动路由到目录 diff
+        console.log('[INFO] Detected directories, using diff-dir...');
+        diffDirectory(oldFile, newFile, {
+          output: options.output,
+          format: 'hdiff',
+          compression: 'none',
+          recursive: true,
+          followSymlinks: false,
+          ignorePatterns: ['node_modules', '.git', 'dist'],
+          maxDepth: Infinity
+        });
+        return;
+      }
+
+      // 检查文件大小，大文件自动使用 stream
+      const maxSize = Math.max(oldStat.size, newStat.size);
+      if (maxSize > STREAM_THRESHOLD) {
+        console.log('[INFO] Large file detected (>100MB), using diff-stream...');
+        diffStream(oldFile, newFile, {
+          output: options.output,
+          maxMemory: 200,
+          chunkSize: 64,
+          compression: 'none',
+          progress: true,
+          resume: false
+        });
+        return;
+      }
+
+      // 检查文件大小（小文件）
+      checkFileSize(oldFile, true);
+      checkFileSize(newFile, true);
 
       const oldData = fs.readFileSync(oldFile);
       const newData = fs.readFileSync(newFile);
@@ -198,5 +234,9 @@ program
     const hash = Buffer.from(blake3_256(data)).toString('hex');
     console.log(`${hash}  ${file}`);
   });
+
+// Register new commands (DEBT-CLI-001/003 清偿)
+registerDiffDirectoryCommand(program);
+registerDiffStreamCommand(program);
 
 program.parse();

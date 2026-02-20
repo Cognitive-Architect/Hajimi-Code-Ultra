@@ -31,22 +31,28 @@ hajimi hash <file>
 
 ## Known Debts
 
-### DEBT-CLI-001 (P1)
-**仅支持文件，不支持目录递归**
+### DEBT-CLI-001【已清偿 v1.1-FIXED】✅
+**目录递归支持**
 
-当前 CLI 仅支持单文件 diff/apply。目录递归支持将在 v1.1 中实现�?
+已实现 `diff-dir` 命令支持目录级 diff：
+```bash
+hajimi diff-dir dir1/ dir2/ -o diff.json
+```
 
 ### DEBT-CLI-002 (P1)
 **原型格式，非优化 CDC+zstd**
 
-当前实现使用简�?JSON 格式存储补丁。完整的 CDC (Content-Defined Chunking) + zstd 帧压缩将在后续版本实现�?
+当前实现使用简化 JSON 格式存储补丁。完整的 CDC (Content-Defined Chunking) + zstd 帧压缩将在后续版本实现。
 
-### DEBT-CLI-003 (P0)
-**文件大小限制 100MB，v1.1 改用 stream**
+### DEBT-CLI-003【已清偿 v1.1-FIXED】✅
+**Stream 流式处理支持**
 
-当前实现使用 `readFileSync` 全量加载文件到内存，为避免大文件导致 OOM，设置了 100MB 上限。超过此限制的文件将被拒绝并提示错误�?
+已实现 `diff-stream` 命令支持 >1GB 大文件：
+```bash
+hajimi diff-stream large.bin large-modified.bin -o patch.hdiff --progress
+```
 
-如需处理更大文件，请等待 v1.1 �?streaming 实现�?
+自动路由：当文件 >100MB 时，`diff` 命令自动使用 streaming 模式
 
 ## Self-Tests
 
@@ -54,7 +60,7 @@ hajimi hash <file>
 npm test
 ```
 
-测试覆盖�?
+测试覆盖�?
 - CLI-FUNC-001: `hajimi diff --help` 显示用法
 - CLI-FUNC-002: `hajimi diff a.txt b.txt -o patch.hdiff` 生成有效补丁
-- CLI-FUNC-003: `hajimi apply patch.hdiff a.txt -o c.txt` �?BLAKE3-256 一�?
+- CLI-FUNC-003: `hajimi apply patch.hdiff a.txt -o c.txt` �?BLAKE3-256 一�?
