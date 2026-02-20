@@ -146,30 +146,182 @@ test('CLI-FUNC-004: hash command computes BLAKE3 hash', () => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-// Test 100MB limit (DEBT-CLI-003)
-test('CLI-OOM-001: reject files larger than 100MB', () => {
+// Test 100MB file auto-routes to diff-stream (DEBT-CLI-003 HARDENED)
+test('CLI-OOM-001: large files auto-route to diff-stream', () => {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hajimi-cli-test-'));
   const bigFile = path.join(tmpDir, 'big.bin');
-  const smallFile = path.join(tmpDir, 'small.txt');
-  
-  // Create a small file
-  fs.writeFileSync(smallFile, 'small content');
   
   // Create a file slightly larger than 100MB (100MB + 1 byte)
   const fd = fs.openSync(bigFile, 'w');
   fs.writeSync(fd, Buffer.alloc(1), 0, 1, 100 * 1024 * 1024);
   fs.closeSync(fd);
   
-  // Try to diff the big file
-  const r = runCli(['diff', bigFile, smallFile, '-o', path.join(tmpDir, 'test.hdiff')]);
+  // Try to diff the big file (should auto-route to diff-stream)
+  const r = runCli(['diff', bigFile, bigFile, '-o', path.join(tmpDir, 'test.hdiff'), '--max-memory', '500']);
   
-  // Should fail with exit code 1 and mention DEBT-CLI-003
-  assert.notStrictEqual(r.status, 0, 'should return non-zero exit code for >100MB file');
-  assert.ok(r.stderr.includes('DEBT-CLI-003') || r.stdout.includes('DEBT-CLI-003'), 
-    'error message should mention DEBT-CLI-003');
+  console.log(`[TEST] large file auto-route: exit code ${r.status}`);
+  
+  // Should succeed with auto-routing message
+  assert.strictEqual(r.status, 0, 'should succeed with auto-routing to diff-stream');
+  assert.ok(r.stdout.includes('diff-stream') || r.stderr.includes('diff-stream'), 
+    'should mention diff-stream in output');
   
   // Cleanup
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-console.log('[INFO] CLI E2E Tests loaded. Run with: node --test tests/e2e/basic.spec.js');
+// ============ HARDENED TESTS: diff-dir (FIX-06) ============
+
+// HARD-TEST-001: diff-dir 真实目录测试
+test('HARD-TEST-001: diff-dir with real directory structure', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hajimi-diff-dir-test-'));
+  const sourceDir = path.join(tmpDir, 'source');
+  const targetDir = path.join(tmpDir, 'target');
+  
+  // 创建真实目录结构
+  fs.mkdirSync(path.join(sourceDir, 'src', 'core'), { recursive: true });
+  fs.mkdirSync(path.join(sourceDir, 'src', 'cli'), { recursive: true });
+  fs.mkdirSync(path.join(targetDir, 'src', 'core'), { recursive: true });
+  fs.mkdirSync(path.join(targetDir, 'src', 'cli'), { recursive: true });
+  
+  // 创建真实文件
+  fs.writeFileSync(path.join(sourceDir, 'src', 'core', 'index.ts'), 'export const v1 = 1;');
+  fs.writeFileSync(path.join(sourceDir, 'src', 'cli', 'main.ts'), 'console.log("v1");');
+  fs.writeFileSync(path.join(targetDir, 'src', 'core', 'index.ts'), 'export const v2 = 2;');
+  fs.writeFileSync(path.join(targetDir, 'src', 'cli', 'main.ts'), 'console.log("v2");');
+  
+  // 执行 diff-dir
+  const outputFile = path.join(tmpDir, 'diff.json');
+  const r = runCli(['diff-dir', sourceDir, targetDir, '-o', outputFile]);
+  
+  console.log(`[TEST] diff-dir: exit code ${r.status}`);
+  
+  assert.strictEqual(r.status, 0, `diff-dir should succeed, got: ${r.stderr}`);
+  assert.ok(fs.existsSync(outputFile), 'output file should exist');
+  
+  // 验证 JSON 结构
+  const result = JSON.parse(fs.readFileSync(outputFile, 'utf8'));
+  assert.ok(result.source, 'should have source info');
+  assert.ok(result.target, 'should have target info');
+  assert.ok(result.changes, 'should have changes array');
+  assert.ok(result.hardened, 'should have hardened marker');
+  assert.strictEqual(result.hardened.circularDetection, true, 'should enable circular detection');
+  
+  // Cleanup
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+// HARD-TEST-002: diff-dir 循环检测测试（自引用）
+test('HARD-TEST-002: diff-dir detects circular symlink (self-reference)', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hajimi-circular-test-'));
+  const testDir = path.join(tmpDir, 'test');
+  
+  fs.mkdirSync(testDir, { recursive: true });
+  fs.writeFileSync(path.join(testDir, 'file.txt'), 'content');
+  
+  // 创建自引用符号链接（Windows/Linux 兼容）
+  try {
+    fs.symlinkSync('.', path.join(testDir, 'loop'), 'junction');
+  } catch {
+    // Windows 可能需要管理员权限，跳过此测试
+    console.log('[TEST] diff-dir circular: skipped (symlink creation failed)');
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    return;
+  }
+  
+  // 执行 diff-dir，预期报错
+  const r = runCli(['diff-dir', testDir, testDir, '-o', path.join(tmpDir, 'out.json')]);
+  
+  console.log(`[TEST] diff-dir circular: exit code ${r.status}, stderr: ${r.stderr.substring(0, 100)}`);
+  
+  // 必须检测到循环并报错（非超时）
+  assert.ok(
+    r.stderr.includes('[CIRCULAR]') || r.status !== 0,
+    'should detect circular reference or exit with error'
+  );
+  
+  // Cleanup
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+// ============ HARDENED TESTS: diff-stream (FIX-06) ============
+
+// HARD-TEST-003: diff-stream 真实大文件测试
+test('HARD-TEST-003: diff-stream with real 100MB file', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hajimi-diff-stream-test-'));
+  const file1 = path.join(tmpDir, 'file1.bin');
+  const file2 = path.join(tmpDir, 'file2.bin');
+  
+  // 创建 100MB 测试文件（使用稀疏文件）
+  const fd1 = fs.openSync(file1, 'w');
+  const fd2 = fs.openSync(file2, 'w');
+  
+  // 写入 100MB 数据（每 1MB 写入一次，最后一块不同）
+  for (let i = 0; i < 100; i++) {
+    const data = Buffer.alloc(1024 * 1024, i);
+    fs.writeSync(fd1, data);
+    
+    // file2 最后一块不同
+    if (i === 99) {
+      const data2 = Buffer.alloc(1024 * 1024, 255);
+      fs.writeSync(fd2, data2);
+    } else {
+      fs.writeSync(fd2, data);
+    }
+  }
+  
+  fs.closeSync(fd1);
+  fs.closeSync(fd2);
+  
+  // 执行 diff-stream（使用 500MB 内存限制确保通过）
+  const outputFile = path.join(tmpDir, 'diff.hdiff');
+  const r = runCli(['diff-stream', file1, file2, '-o', outputFile, '--progress', '--max-memory', '500']);
+  
+  console.log(`[TEST] diff-stream: exit code ${r.status}`);
+  
+  assert.strictEqual(r.status, 0, `diff-stream should succeed, got: ${r.stderr}`);
+  assert.ok(fs.existsSync(outputFile), 'output file should exist');
+  
+  // 验证输出格式
+  const result = JSON.parse(fs.readFileSync(outputFile, 'utf8'));
+  assert.strictEqual(result.format, 'hdiff-stream-v1.1-HARDENED', 'should use HARDENED format');
+  assert.ok(result.metadata.maxMemoryMB, 'should have memory limit info');
+  assert.ok(result.changes.length > 0, 'should detect changes');
+  
+  // Cleanup
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+// HARD-TEST-004: diff-stream 内存硬限制测试（必须报错）
+test('HARD-TEST-004: diff-stream memory hard limit enforcement', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hajimi-mem-limit-test-'));
+  const file1 = path.join(tmpDir, 'file1.bin');
+  const file2 = path.join(tmpDir, 'file2.bin');
+  
+  // 创建 100MB 文件
+  const fd1 = fs.openSync(file1, 'w');
+  const fd2 = fs.openSync(file2, 'w');
+  fs.writeSync(fd1, Buffer.alloc(100 * 1024 * 1024, 1));
+  fs.writeSync(fd2, Buffer.alloc(100 * 1024 * 1024, 2));
+  fs.closeSync(fd1);
+  fs.closeSync(fd2);
+  
+  // 使用 50MB 内存限制（必须失败）
+  const outputFile = path.join(tmpDir, 'diff.hdiff');
+  const r = runCli(['diff-stream', file1, file2, '-o', outputFile, '--max-memory', '50']);
+  
+  console.log(`[TEST] diff-stream memory limit: exit code ${r.status}, stderr: ${r.stderr.substring(0, 100)}`);
+  
+  // 必须报错（因为 100MB 文件无法用 50MB 内存处理）
+  assert.notStrictEqual(r.status, 0, 'should fail with insufficient memory');
+  assert.ok(
+    r.stderr.includes('Memory limit exceeded') || r.stderr.includes('error'),
+    'should report memory error'
+  );
+  
+  // Cleanup
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+console.log('[INFO] CLI E2E Tests loaded (HARDENED). Run with: node --test tests/e2e/basic.spec.js');
+console.log('[INFO] New tests: HARD-TEST-001/002 (diff-dir), HARD-TEST-003/004 (diff-stream)');

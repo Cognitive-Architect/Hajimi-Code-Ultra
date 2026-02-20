@@ -47,7 +47,8 @@ program
   .argument('<newFile>', 'Target file path')
   .option('-o, --output <patch>', 'Output patch file path', 'patch.hdiff')
   .option('-a, --algorithm <algo>', 'Compression algorithm', 'cdc-zstd')
-  .action((oldFile: string, newFile: string, options: { output: string; algorithm: string }) => {
+  .option('--max-memory <MB>', 'Memory limit for large files (auto-routes to stream)', '200')
+  .action((oldFile: string, newFile: string, options: { output: string; algorithm: string; maxMemory: string }) => {
     try {
       // Validate inputs
       if (!fs.existsSync(oldFile)) {
@@ -88,7 +89,7 @@ program
         console.log('[INFO] Large file detected (>100MB), using diff-stream...');
         diffStream(oldFile, newFile, {
           output: options.output,
-          maxMemory: 200,
+          maxMemory: parseInt(options.maxMemory, 10),
           chunkSize: 64,
           compression: 'none',
           progress: true,

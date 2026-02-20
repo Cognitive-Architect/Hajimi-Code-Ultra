@@ -36,3 +36,8 @@ node_modules/
 .DS_Store
 Thumbs.db
 context_research/
+*.hdiff
+*.bin
+circ-test/
+test-*.bin
+
