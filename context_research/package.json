@@ -1,0 +1,10 @@
+{
+  "name": "hajimi-v0.9.1",
+  "version": "0.9.1",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test",
+    "test:corruption": "node scripts/run-corruption-suite.js"
+  }
+}
